@@ -1,0 +1,551 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#54634a">
+<title>Plano de Casamento — 15/05/2027 · Goiânia</title>
+<style>
+  :root{
+    --bg:#f6f1e8; --card:#fffdf9; --ink:#3b3a34; --muted:#8c887c;
+    --line:#e7ddcb; --sage:#6f8064; --sage-d:#4f5d45; --gold:#bd9a3f; --gold-l:#e7d29a;
+    --soft:#efe7d7; --cream:#faf5ec; --ok:#5b8c5a; --rose:#c08a72;
+    --sh:0 3px 14px rgba(90,75,45,.09);
+  }
+  *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+  html,body{margin:0;padding:0}
+  body{background:var(--bg);color:var(--ink);font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;font-size:16px;line-height:1.45}
+  h1,h2,h3,.serif{font-family:"Cormorant Garamond",Georgia,"Times New Roman",serif}
+  h2,h3{font-weight:600;margin:0}
+  .wrap{max-width:840px;margin:0 auto;padding:0 12px 96px}
+  .top{position:sticky;top:0;z-index:30;background:rgba(84,99,74,.97);color:#fff;backdrop-filter:blur(6px);text-align:center;padding:7px 10px;font-size:.8rem;letter-spacing:.3px}
+  .top b{font-family:Georgia,serif}
+  .top .d{color:var(--gold-l)}
+  .tabs{position:sticky;top:33px;z-index:29;background:var(--bg);display:flex;gap:6px;overflow-x:auto;padding:8px 10px;border-bottom:1px solid var(--line);scrollbar-width:none}
+  .tabs::-webkit-scrollbar{display:none}
+  .tabs button{flex:0 0 auto;border:1px solid var(--line);background:#fff;color:var(--muted);border-radius:22px;padding:7px 14px;font-size:.82rem;font-weight:600;white-space:nowrap;cursor:pointer}
+  .tabs button.on{background:var(--sage);color:#fff;border-color:var(--sage);box-shadow:0 2px 8px rgba(111,128,100,.35)}
+  .tab{display:none;padding-top:14px}
+  .tab.active{display:block}
+  .card{background:var(--card);border:1px solid var(--line);border-radius:16px;box-shadow:var(--sh);padding:15px;margin-bottom:14px}
+  .card>h2{font-size:1.12rem;display:flex;align-items:center;gap:8px;color:var(--sage-d)}
+  .card h3{font-size:.95rem;margin:14px 0 6px;color:var(--sage-d)}
+  .hint{font-size:.8rem;color:var(--muted);margin:4px 0 0}
+  .hero{position:relative;background:radial-gradient(120% 130% at 50% 0,#7c8d70 0,#54634a 70%);color:#fff;border-radius:20px;padding:26px 18px 22px;text-align:center;overflow:hidden;box-shadow:var(--sh);margin-bottom:14px}
+  .hero:before,.hero:after{content:"";position:absolute;width:150px;height:150px;border:1px solid rgba(231,210,154,.35);border-radius:50%}
+  .hero:before{top:-70px;left:-50px}.hero:after{bottom:-80px;right:-55px}
+  .mono{width:60px;height:60px;margin:0 auto 8px;border:2px solid var(--gold-l);border-radius:50%;display:flex;align-items:center;justify-content:center;font-family:Georgia,serif;font-size:1.15rem;letter-spacing:1px;color:var(--gold-l);position:relative;z-index:1}
+  .hero .names{font-family:Georgia,serif;font-size:1.9rem;line-height:1.15;position:relative;z-index:1}
+  .hero .div{display:flex;align-items:center;justify-content:center;gap:10px;margin:8px 0;color:var(--gold-l);position:relative;z-index:1}
+  .hero .div i{height:1px;width:46px;background:rgba(231,210,154,.6)}
+  .hero .date{font-size:.98rem;opacity:.95;position:relative;z-index:1}
+  .hero .place{font-size:.82rem;opacity:.82;margin-top:2px;position:relative;z-index:1}
+  .hero .cd{margin-top:14px;position:relative;z-index:1}
+  .hero .cd b{font-family:Georgia,serif;font-size:2.1rem;color:#fff;display:block;line-height:1}
+  .hero .cd span{font-size:.72rem;text-transform:uppercase;letter-spacing:2px;opacity:.85}
+  .pref{background:linear-gradient(90deg,#fbf4df,#fdfbf4);border-left:4px solid var(--gold);border-radius:10px;padding:10px 12px;font-size:.86rem;margin:8px 0}
+  .field{margin-bottom:9px}
+  label.fl{font-size:.7rem;text-transform:uppercase;letter-spacing:.5px;color:var(--muted);display:block;margin-bottom:3px}
+  .f{width:100%;border:1px solid var(--line);border-radius:10px;padding:10px;font-size:.95rem;background:#fff;color:var(--ink);font-family:inherit}
+  .f:focus{outline:2px solid var(--sage);outline-offset:-1px;border-color:var(--sage)}
+  textarea.f{min-height:54px;resize:vertical}
+  .grid2{display:grid;grid-template-columns:1fr 1fr;gap:9px}
+  .grid3{display:grid;grid-template-columns:repeat(3,1fr);gap:9px}
+  @media(max-width:560px){.grid3{grid-template-columns:1fr 1fr}}
+  .btn{border:none;border-radius:11px;padding:10px 14px;font-size:.85rem;font-weight:700;cursor:pointer;font-family:inherit}
+  .btn.p{background:var(--sage);color:#fff}.btn.s{background:#fff;color:var(--sage-d);border:1px solid var(--line)}
+  .btn.gold{background:var(--gold);color:#fff}
+  .btn.mini{padding:6px 10px;font-size:.76rem}
+  .btn.del{background:#fbe9e3;color:#a24b34}
+  .addrow{margin-top:9px}
+  .kpi{display:grid;grid-template-columns:1fr 1fr;gap:9px}
+  .kpi .k{background:var(--cream);border:1px solid var(--line);border-radius:13px;padding:11px;text-align:center}
+  .kpi .k .v{font-size:1.15rem;font-weight:700;font-family:Georgia,serif;color:var(--sage-d)}
+  .kpi .k .t{font-size:.66rem;text-transform:uppercase;letter-spacing:.4px;color:var(--muted)}
+  .prog{height:12px;background:var(--soft);border-radius:8px;overflow:hidden;margin:8px 0}
+  .prog>i{display:block;height:100%;background:linear-gradient(90deg,var(--sage),var(--gold))}
+  .acc-h{width:100%;background:none;border:none;display:flex;align-items:center;gap:9px;padding:3px 0;cursor:pointer;text-align:left;font-family:Georgia,serif;font-size:1.05rem;color:var(--ink)}
+  .acc-h .chev{margin-left:auto;color:var(--muted);transition:transform .2s;font-size:.9rem}
+  .acc-h .chev.up{transform:rotate(90deg)}
+  .acc-b{display:none;padding-top:10px;border-top:1px solid var(--soft);margin-top:8px}
+  .acc-b.open{display:block}
+  .chip{font-size:.66rem;padding:3px 9px;border-radius:20px;font-weight:700;white-space:nowrap}
+  .chip.g{background:#e6efe0;color:var(--sage-d)}.chip.y{background:#f7ecd2;color:#8a6d1e}.chip.n{background:#efe9de;color:#96917f}
+  .opt{border:1px dashed var(--line);border-radius:12px;padding:11px;margin:8px 0;background:#fcfaf4}
+  .opt .oh{font-size:.76rem;font-weight:700;color:var(--sage-d);margin-bottom:6px;display:flex;justify-content:space-between;align-items:center}
+  .mini{font-size:.78rem;color:var(--muted)}
+  .inc{display:grid;grid-template-columns:1fr auto;gap:6px 8px;align-items:center;border-bottom:1px solid var(--soft);padding:7px 0}
+  .inc:last-child{border-bottom:none}
+  .inc .lbl{font-size:.88rem}
+  .inc select{border:1px solid var(--line);border-radius:8px;padding:6px;font-size:.8rem;background:#fff}
+  .inc .obs{grid-column:1/-1}
+  .ck{display:flex;align-items:flex-start;gap:11px;padding:10px 2px;border-bottom:1px solid var(--soft)}
+  .ck:last-child{border-bottom:none}
+  .ck input[type=checkbox]{width:23px;height:23px;margin-top:1px;accent-color:var(--sage);flex:0 0 auto}
+  .ck .cx{flex:1}.ck .ct{font-size:.9rem}
+  .ck.done .ct{text-decoration:line-through;color:var(--muted)}
+  .ck .cn{width:100%;border:none;border-bottom:1px dashed var(--line);font-size:.78rem;padding:3px 0;background:transparent;margin-top:4px;color:var(--muted);font-family:inherit}
+  .ptag{display:inline-block;font-size:.64rem;background:var(--soft);color:var(--sage-d);border-radius:6px;padding:1px 7px;margin-top:3px}
+  .phase{font-family:Georgia,serif;font-size:1.02rem;color:var(--sage-d);margin:2px 0 4px}
+  .twrap{overflow-x:auto;-webkit-overflow-scrolling:touch;margin:0 -5px}
+  table{border-collapse:collapse;width:100%;min-width:560px;font-size:.85rem}
+  th,td{border:1px solid var(--line);padding:5px 6px;text-align:left;vertical-align:middle}
+  th{background:var(--soft);font-size:.68rem;text-transform:uppercase;letter-spacing:.3px;color:var(--sage-d)}
+  td input,td select{border:1px solid transparent;border-radius:6px;padding:7px 6px;font-size:.85rem;width:100%;background:transparent;font-family:inherit;min-width:72px}
+  td input:focus,td select:focus{border-color:var(--sage);outline:none;background:#fff}
+  td.num input{text-align:right}
+  tfoot td{background:#f2ede1;font-weight:700}
+  .bar{position:fixed;bottom:0;left:0;right:0;background:#fff;border-top:1px solid var(--line);display:flex;gap:8px;justify-content:center;padding:9px 10px;z-index:35;flex-wrap:wrap}
+  .toast{position:fixed;bottom:64px;left:50%;transform:translateX(-50%);background:var(--sage-d);color:#fff;padding:7px 16px;border-radius:20px;font-size:.8rem;opacity:0;transition:opacity .3s;z-index:60;pointer-events:none}
+  .toast.show{opacity:1}
+  .overlay{position:fixed;inset:0;background:rgba(45,38,25,.55);display:none;align-items:center;justify-content:center;padding:14px;z-index:80}
+  .overlay.show{display:flex}
+  .modal{background:#fff;border-radius:18px;max-width:540px;width:100%;max-height:86vh;overflow:auto;padding:18px}
+  .modal h2{color:var(--sage-d);font-size:1.15rem;margin-bottom:6px}
+  .modal textarea{width:100%;height:150px;font-family:monospace;font-size:.72rem;border:1px solid var(--line);border-radius:10px;padding:9px;margin-top:8px}
+  @media print{
+    .top,.tabs,.bar,.addrow,.btn,.toast,.overlay{display:none!important}
+    .tab{display:block!important} .acc-b{display:block!important}
+    .card,.hero{box-shadow:none;break-inside:avoid} body{font-size:11px;background:#fff}
+    .hero{background:#54634a!important;-webkit-print-color-adjust:exact;print-color-adjust:exact}
+  }
+</style>
+</head>
+<body>
+<div class="top" id="top"></div>
+<div class="tabs" id="tabs"></div>
+<div class="wrap">
+  <section class="tab" data-tab="inicio"></section>
+  <section class="tab" data-tab="cronograma"></section>
+  <section class="tab" data-tab="fornecedores"></section>
+  <section class="tab" data-tab="equipe"></section>
+  <section class="tab" data-tab="diad"></section>
+  <section class="tab" data-tab="essenciais"></section>
+  <section class="tab" data-tab="pagamentos"></section>
+  <section class="tab" data-tab="convidados"></section>
+  <section class="tab" data-tab="noivos"></section>
+</div>
+
+<div class="toast" id="toast"></div>
+<div class="bar">
+  <button class="btn gold" onclick="openBackup()">💾 Salvar cópia (backup)</button>
+  <button class="btn s" onclick="openRestore()">📥 Restaurar</button>
+  <button class="btn s" onclick="window.print()">🖨 Imprimir / PDF</button>
+</div>
+
+<div class="overlay" id="ov"><div class="modal" id="modal"></div></div>
+
+<script>
+"use strict";
+function h(tag,attrs){
+  var e=document.createElement(tag),i,k;
+  if(attrs) for(k in attrs){
+    if(k==='class') e.className=attrs[k];
+    else if(k==='html') e.innerHTML=attrs[k];
+    else if(k.slice(0,2)==='on'&&typeof attrs[k]==='function') e[k]=attrs[k];
+    else if(attrs[k]!=null) e.setAttribute(k,attrs[k]);
+  }
+  for(i=2;i<arguments.length;i++){ var kid=arguments[i]; if(kid==null)continue;
+    if(Array.isArray(kid)) kid.forEach(function(x){ if(x!=null) e.appendChild(x.nodeType?x:document.createTextNode(x)); });
+    else e.appendChild(kid.nodeType?kid:document.createTextNode(kid)); }
+  return e;
+}
+function pn(v){ if(v==null)return 0; v=(''+v).replace(/[^0-9,.-]/g,'').replace(/\./g,'').replace(',','.'); var n=parseFloat(v); return isNaN(n)?0:n; }
+function fmt(n){ return n.toLocaleString('pt-BR',{style:'currency',currency:'BRL',maximumFractionDigits:0}); }
+function toast(m){ var t=document.getElementById('toast'); t.textContent=m; t.className='toast show'; clearTimeout(toast._t); toast._t=setTimeout(function(){t.className='toast';},1400); }
+
+var KEY='casamento_2027_goiania_v2', DB, saveT, canStore=true;
+function save(){ try{ localStorage.setItem(KEY,JSON.stringify(DB)); }catch(e){ canStore=false; } updateHeader(); }
+function saveD(){ clearTimeout(saveT); saveT=setTimeout(save,350); }
+function load(){ try{ var s=localStorage.getItem(KEY); if(s)return JSON.parse(s); }catch(e){ canStore=false; } return null; }
+
+function tf(o,k,ph,type){ var e=h('input',{class:'f',type:type||'text',placeholder:ph||'',oninput:function(){o[k]=e.value;saveD();}}); e.value=o[k]==null?'':o[k]; return e; }
+function ta(o,k,ph){ var e=h('textarea',{class:'f',placeholder:ph||'',oninput:function(){o[k]=e.value;saveD();}}); e.value=o[k]==null?'':o[k]; return e; }
+function sel(o,k,opts,onch){ var s=h('select',{class:'f',onchange:function(){o[k]=s.value;save();if(onch)onch();}}); opts.forEach(function(op){ var x=h('option',{value:op},op===''?'—':op); if((o[k]==null?'':o[k])===op)x.selected=true; s.appendChild(x); }); return s; }
+function cb(o,k,onch){ var c=h('input',{type:'checkbox',onchange:function(){o[k]=c.checked;save();if(onch)onch();}}); c.checked=!!o[k]; return c; }
+function field(l,n){ return h('div',{class:'field'}, h('label',{class:'fl'},l), n); }
+
+function CAT(nome,pref,itens){ return {nome:nome,pref:pref||'',itens:itens.map(function(t){return {label:t,inc:'',obs:''};}),opcoes:[opt(),opt(),opt()],decisao:'',status:'',obs:''}; }
+function opt(){ return {nome:'',contato:'',valor:'',inclui:''}; }
+function ck(t){ return {t:t,done:false,obs:''}; }
+
+function defaultDB(){ return {
+ __v:2, noiva:'', noivo:'', local:'', cidade:'Goiânia/GO', hora:'16:00', meta:'30000', teto:'60000',
+ categorias:[
+  CAT('1. Espaço de eventos (local)','',['Cadeiras','Mesas','Toalhas / mesa posta','Talheres','Louças / pratos','Taças e copos','Cozinha equipada','Gerador / energia extra','Climatização (ar / ventilação)','Banheiros (qtde e higienização)','Estacionamento','Segurança do espaço','Limpeza pós-evento','Espaço para a cerimônia','Espaço para a festa','Suíte / sala dos noivos','Permite buffet externo?','Horário-limite de som / término','Taxa de rolha (bebida própria)','Seguro / caução','Acesso e horário para montagem']),
+  CAT('2. Buffet / comida','Preferência dos noivos: churrasco parrilla — costela fogo de chão, entradas de frios e massa (macarrão). Peça também 2–3 opções alternativas de cardápio para comparar.',['Couvert / entradas','Estação de frios','Prato principal (parrilla)','Costela fogo de chão','Acompanhamentos / guarnições','Massa / macarrão','Saladas','Sobremesa','Louças e talheres do buffet','Garçons e maître inclusos?','Nº de garçons','Prova / degustação','Refeição dos fornecedores','Reposição à vontade?','Comida da madrugada (bem-casado / lanche)','Taxa de serviço (10%)']),
+  CAT('3. Bebidas / bar','',['Água','Refrigerante','Suco','Cerveja','Vinho','Espumante (brinde)','Destilados / drinks','Barman / bartender','Gelo e copos','Welcome drink','Open bar até que horas?']),
+  CAT('4. Bolo e doces','',['Bolo (andares e sabor)','Docinhos (qtde por cento)','Bem-casados','Naked cake / cenográfico','Topo de bolo','Mesa / suporte do bolo','Entrega e montagem']),
+  CAT('5. DJ / música','',['Equipamento de som próprio','Horas de festa contratadas','Iluminação de pista inclusa','Microfone p/ cerimônia','Som p/ cerimônia','Playlist personalizada','Reunião prévia','Equipamento reserva (backup)','Música ao vivo (voz / violão)?']),
+  CAT('6. Som e iluminação (se não incluso)','Preencha só se o espaço/DJ não cobrir.',['Som da cerimônia','Som da festa','Microfones','Iluminação cênica / ambiente','Moving heads / canhões','Luz nas mesas','Gerador de energia','Técnico presente no evento']),
+  CAT('7. Pista de dança','',['Tipo (LED / espelhada / adesivada / amadeirada)','Tamanho (m²)','Personalização (nome / monograma)','Montagem e desmontagem','Nivelamento do piso']),
+  CAT('8. Flores e arranjos','',['Cerimônia (altar / arco)','Caminho / passarela','Centros das mesas dos convidados','Mesa do bolo / doces','Mesa dos noivos','Buquê da noiva','Buquê para jogar','Boutonnière (noivo / padrinhos)','Pétalas / chuva de flores','Troca da flor cerimônia → festa']),
+  CAT('9. Decoração','',['Decoração da cerimônia','Decoração da festa','Mesa dos noivos','Lounge / área de descanso','Painel / backdrop de fotos','Velas e castiçais','Mobiliário (sofás, pufes, aparadores)','Iluminação decorativa','Placas e sinalização','Numeração das mesas','Ambientação da entrada','Saída dos noivos (sparklers / pétalas)']),
+  CAT('10. Carpete / passadeira da entrada','',['Cor','Comprimento (m)','Material','Montagem / fixação','Iluminação lateral']),
+  CAT('11. Fotografia','',['Horas de cobertura','Making of (noiva e noivo)','Ensaio pré-wedding','Segundo fotógrafo','Fotos digitais tratadas','Álbum impresso','Prazo de entrega','Prévia / teaser']),
+  CAT('12. Vídeo / filmagem','',['Horas de cobertura','Making of','Same day edit','Teaser / trailer','Filme completo','Drone','Prazo de entrega']),
+  CAT('13. Cabine de fotos / totem 360','',['Tipo (cabine, totem 360, espelho mágico)','Tempo de operação','Impressão na hora','Adereços / props','Álbum de cópias','Atendente incluído','Personalização das fotos']),
+  CAT('14. Celebrante / cerimônia','',['Tipo (civil / religioso / simbólico)','Celebrante confirmado','Ensaio da cerimônia','Roteiro personalizado','Assinatura / registro civil','Som e microfone da cerimônia']),
+  CAT('15. Convites e papelaria','',['Save the date','Convite (impresso / digital)','Nº de convites','Menu impresso','Placas de mesa / seating','Plaquinhas / tags','Prazo de produção']),
+  CAT('16. Beleza (noiva e noivo)','',['Cabelo da noiva','Maquiagem da noiva','Teste de beleza','Day use / preparação','Cabelo e barba do noivo','Beleza madrinhas / mães','Retoque durante a festa']),
+  CAT('17. Traje dos noivos','',['Vestido da noiva (aluguel / compra)','Ajustes / provas','Sapatos da noiva','Véu / acessórios / joias','Terno do noivo','Sapatos e acessórios do noivo','Segundo traje (troca na festa)?']),
+  CAT('18. Alianças','',['Par de alianças','Gravação (nomes / data)','Ajuste de tamanho','Caixinha / porta-aliança','Seguro / garantia']),
+  CAT('19. Assessoria / cerimonial','',['Nº de reuniões de planejamento','Nº de profissionais no dia','Horas de cobertura no dia D','Cronograma / roteiro do dia','Ensaio','Coordenação dos fornecedores','Kit emergência']),
+  CAT('20. Transporte','',['Carro dos noivos','Transfer / van dos convidados','Translado hotel ↔ local','Manobrista','Carro reserva']),
+  CAT('21. Lembrancinhas / mimos','',['Lembrança dos convidados','Kit toalete (banheiro)','Kit the end / ressaca','Presentes dos padrinhos']),
+  CAT('22. Hospedagem','',['Suíte dos noivos','Hotel p/ convidados de fora','Bloqueio de quartos / desconto','Café da manhã','Transfer do hotel'])
+ ],
+ cronograma:[
+  {fase:'12+ meses antes (agora → mai/2026)',tarefas:[ck('Definir estilo, nº de convidados (~60) e orçamento (meta R$30 mil / teto R$60 mil)'),ck('Montar lista preliminar de convidados'),ck('Contratar a assessoria / cerimonial e alinhar expectativas'),ck('Visitar e reservar o espaço de eventos (contrato + sinal)'),ck('Confirmar a data com o espaço: 15/05/2027 (sábado)')]},
+  {fase:'10 a 12 meses (jun–ago/2026)',tarefas:[ck('Fechar o buffet com degustação e contrato (parrilla + costela fogo de chão)'),ck('Contratar fotografia e vídeo'),ck('Definir padrinhos e madrinhas'),ck('Reservar DJ / música')]},
+  {fase:'8 a 10 meses (set–out/2026)',tarefas:[ck('Contratar decoração e flores'),ck('Escolher vestido da noiva e traje do noivo (iniciar)'),ck('Definir identidade visual / design dos convites'),ck('Contratar celebrante (civil / religioso)')]},
+  {fase:'6 a 8 meses (nov–dez/2026)',tarefas:[ck('Degustar e fechar bolo e doces'),ck('Fechar bebidas / bar'),ck('Fazer teste de beleza (cabelo e maquiagem)'),ck('Pesquisar e reservar a lua de mel')]},
+  {fase:'4 a 6 meses (jan–fev/2027)',tarefas:[ck('Enviar save the date / convites'),ck('Fechar pista de dança, som e iluminação'),ck('Fechar carpete / passadeira e itens da entrada'),ck('Definir hospedagem para convidados de fora'),ck('Contratar cabine de fotos / totem 360')]},
+  {fase:'3 meses (fev–mar/2027)',tarefas:[ck('Dar entrada na habilitação de casamento no cartório (confirmar prazos em Goiânia)'),ck('Abrir confirmações de presença (RSVP)'),ck('Prova do vestido / ajustes'),ck('Fechar cardápio final e quantidades')]},
+  {fase:'2 meses (mar/2027)',tarefas:[ck('Fechar layout das mesas e mapa de assentos'),ck('Montar playlist (tocar / NÃO tocar) para o DJ'),ck('Definir roteiro da cerimônia e da festa'),ck('Reconfirmar todos os contratos e datas de pagamento')]},
+  {fase:'1 mês (abr/2027)',tarefas:[ck('Confirmar RSVP final e fechar número de convidados'),ck('Acertar saldos / pagamentos com fornecedores'),ck('Montar o cronograma do dia (minuto a minuto) com a cerimonial'),ck('Ensaio da cerimônia'),ck('Última prova de vestido / traje'),ck('Comprar as alianças (se ainda não)')]},
+  {fase:'1 semana antes',tarefas:[ck('Reconfirmar horários com TODOS os fornecedores'),ck('Separar pagamentos e gorjetas em envelopes'),ck('Montar o kit emergência'),ck('Confirmar transporte dos noivos'),ck('Fazer test drive do trajeto até o local'),ck('Conferir documentos e alianças')]},
+  {fase:'Dia 15/05/2027 — Dia D',tarefas:[ck('Entregar cronograma impresso à cerimonial e fornecedores'),ck('Seguir a timeline do dia (aba Dia D)'),ck('Aproveitar! A cerimonial coordena tudo')]},
+  {fase:'Pós-casamento',tarefas:[ck('Devolver itens alugados (traje etc.)'),ck('Pagar saldos e gorjetas pendentes'),ck('Registrar certidão de casamento e atualizar documentos'),ck('Agradecer convidados / enviar fotos'),ck('Acompanhar entrega de álbum e vídeo')]}
+ ],
+ equipe:[
+  {funcao:'Cerimonial / assessora',qtd:'',diaria:'',horario:'',obs:''},
+  {funcao:'Garçom',qtd:'',diaria:'',horario:'',obs:'ex.: 1 p/ ~10 convidados'},
+  {funcao:'Maître',qtd:'',diaria:'',horario:'',obs:''},
+  {funcao:'Copa / cozinha',qtd:'',diaria:'',horario:'',obs:''},
+  {funcao:'Barman',qtd:'',diaria:'',horario:'',obs:''},
+  {funcao:'Segurança',qtd:'',diaria:'',horario:'',obs:''},
+  {funcao:'Manobrista',qtd:'',diaria:'',horario:'',obs:''},
+  {funcao:'Recepcionista',qtd:'',diaria:'',horario:'',obs:''},
+  {funcao:'Limpeza',qtd:'',diaria:'',horario:'',obs:''},
+  {funcao:'Apoio / produção',qtd:'',diaria:'',horario:'',obs:''},
+  {funcao:'Recreação infantil / babá',qtd:'',diaria:'',horario:'',obs:''},
+  {funcao:'Técnico de som / DJ',qtd:'',diaria:'',horario:'',obs:''}
+ ],
+ diad:[
+  {hora:'08:00',ativ:'Café e preparação dos noivos',resp:'',done:false},
+  {hora:'10:00',ativ:'Início da beleza da noiva (cabelo / maquiagem)',resp:'',done:false},
+  {hora:'12:00',ativ:'Almoço leve dos noivos e equipe',resp:'',done:false},
+  {hora:'13:00',ativ:'Chegada dos fornecedores / início da montagem',resp:'',done:false},
+  {hora:'14:00',ativ:'Making of (noiva e noivo, separados)',resp:'',done:false},
+  {hora:'15:00',ativ:'Fotos individuais / com padrinhos',resp:'',done:false},
+  {hora:'15:30',ativ:'Cerimonial confere montagem, som e decoração',resp:'',done:false},
+  {hora:'15:45',ativ:'Chegada e recepção dos convidados',resp:'',done:false},
+  {hora:'16:00',ativ:'Cerimônia',resp:'',done:false},
+  {hora:'16:45',ativ:'Cumprimentos e sessão de fotos dos noivos',resp:'',done:false},
+  {hora:'17:15',ativ:'Entrada dos noivos na festa',resp:'',done:false},
+  {hora:'17:30',ativ:'Início do jantar (parrilla / costela fogo de chão)',resp:'',done:false},
+  {hora:'18:30',ativ:'Primeira dança / valsa',resp:'',done:false},
+  {hora:'19:00',ativ:'Abertura da pista de dança',resp:'',done:false},
+  {hora:'20:30',ativ:'Corte do bolo e brinde',resp:'',done:false},
+  {hora:'21:00',ativ:'Bar e pista',resp:'',done:false},
+  {hora:'23:00',ativ:'Bem-casados / saída dos noivos',resp:'',done:false},
+  {hora:'23:30',ativ:'Encerramento e desmontagem',resp:'',done:false}
+ ],
+ pagamentos:['Espaço','Buffet','Bebidas / bar','Bolo e doces','DJ / música','Som e iluminação','Pista de dança','Flores','Decoração','Carpete / entrada','Fotografia','Vídeo','Cabine 360','Celebrante','Convites / papelaria','Beleza','Traje da noiva','Traje do noivo','Alianças','Assessoria / cerimonial','Transporte','Lembrancinhas','Hospedagem'].map(function(f){return {forn:f,total:'',entrada:'',parc:'',venc:'',pago:''};}),
+ convidados:[{nome:'',grupo:'',ad:'',cr:'',conf:'Pendente',mesa:'',obs:''},{nome:'',grupo:'',ad:'',cr:'',conf:'Pendente',mesa:'',obs:''}],
+ essenciais:{
+  kit:[ck('Costura: agulha, linhas (branca/preta), alfinetes, botões extras, fita dupla-face de tecido'),ck('Tesourinha e alfinete de segurança'),ck('Retoque: batom/gloss, pó compacto, grampos e presilhas, elástico de cabelo, spray fixador, esmalte transparente'),ck('Saúde: analgésico, antiácido, anti-inflamatório, band-aid, colírio, absorvente, remédio de uso pessoal'),ck('Praticidades: bala de menta, mini desodorante, lenços, cotonete, protetor de bolha, canudo (beber sem borrar o batom)'),ck('Power bank + cabo de celular'),ck('Guarda-chuva / capa (mesmo em maio)')],
+  semana:[ck('Reconfirmar horários com todos os fornecedores'),ck('Última prova de traje / vestido'),ck('Cabelo, unhas e depilação'),ck('Test drive do trajeto até o local'),ck('Montar envelopes de pagamento e gorjetas'),ck('Carregar celulares e power bank'),ck('Separar documentos, alianças e votos'),ck('Arrumar a mala da lua de mel'),ck('Descansar, hidratar e dormir bem na véspera')],
+  levar:[ck('Alianças'),ck('Documentos dos noivos e das 2 testemunhas'),ck('Votos escritos'),ck('Roteiro impresso para cada fornecedor'),ck('Lista de contatos de todos os fornecedores'),ck('Sapato confortável reserva'),ck('Necessaire / kit emergência'),ck('Lista de músicas (tocar / NÃO tocar)'),ck('Muda de roupa para a saída / lua de mel')],
+  gorjetas:[ck('Saldos finais separados por fornecedor (envelopes identificados)'),ck('Gorjetas (garçons, manobristas, DJ, seguranças...)'),ck('Definir quem entrega os envelopes (cerimonial)'),ck('Guardar todos os recibos')]
+ },
+ docs:[ck('Reunir documentos dos noivos (RG, CPF, certidão de nascimento atualizada, comprovante de residência)'),ck('Escolher 2 testemunhas (com documentos)'),ck('Definir regime de bens e pacto antenupcial, se necessário'),ck('Dar entrada no cartório de registro civil (processo ~30 dias; edital de proclamas ~15 dias) — confirmar em Goiânia'),ck('Retirar a certidão de habilitação (validade de 90 dias)'),ck('Confirmar celebrante e assinatura (civil no dia ou antes)'),ck('Pós: retirar a certidão de casamento'),ck('Pós: atualizar documentos se houver mudança de nome (RG, CPF, banco, INSS, plano de saúde)')],
+ beleza:[ck('Teste de cabelo e maquiagem'),ck('Cuidados com a pele (com antecedência)'),ck('Cabelo e barba do noivo (agendar ~3 dias antes)'),ck('Manicure / pedicure'),ck('Dentista / sorriso (se desejar)'),ck('Depilação / estética'),ck('Day use / massagem (opcional)')],
+ luademel:[ck('Definir destino e datas'),ck('Definir orçamento da viagem'),ck('Reservar passagens'),ck('Reservar hospedagem'),ck('Passaporte / visto (se exterior)'),ck('Seguro viagem'),ck('Câmbio / cartão internacional'),ck('Vacinas (se necessário)')]
+}; }
+
+(function(){ var d=defaultDB(), s=load(); if(!s){ DB=d; } else { DB=s; for(var k in d){ if(!(k in DB)) DB[k]=d[k]; } if(!DB.essenciais||Array.isArray(DB.essenciais)) DB.essenciais=d.essenciais; } })();
+
+function allEss(){ var a=[]; ['kit','semana','levar','gorjetas'].forEach(function(g){ (DB.essenciais[g]||[]).forEach(function(x){a.push(x);}); }); return a; }
+function countTasks(){ var t=0,dn=0; DB.cronograma.forEach(function(f){ f.tarefas.forEach(function(x){t++;if(x.done)dn++;}); }); allEss().forEach(function(x){t++;if(x.done)dn++;}); return {t:t,dn:dn}; }
+function confirmados(){ var n=0; DB.convidados.forEach(function(g){ if(g.conf==='Confirmado') n+=(pn(g.ad)+pn(g.cr))||1; }); return n; }
+function days(){ return Math.max(0,Math.ceil((new Date(2027,4,15)-new Date())/86400000)); }
+function initials(){ var a=(DB.noiva||'').trim(), b=(DB.noivo||'').trim(); var x=a?a[0].toUpperCase():'', y=b?b[0].toUpperCase():''; return (x&&y)?(x+'&'+y):(x||y||'♡'); }
+function coupleName(){ return (DB.noiva||DB.noivo)?((DB.noiva||'Noiva')+' & '+(DB.noivo||'Noivo')):'Nosso Casamento'; }
+function updateHeader(){
+  document.getElementById('top').innerHTML='<b>'+coupleName()+'</b> · 15/05/2027 · <span class="d">faltam '+days()+' dias</span>';
+  setTxt('heroMono',initials()); setTxt('heroNames',coupleName());
+  setTxt('heroPlace',(DB.cidade||'Goiânia/GO')+(DB.local?(' · '+DB.local):''));
+  setTxt('heroDays',days());
+}
+function setTxt(id,v){ var e=document.getElementById(id); if(e)e.textContent=v; }
+
+function renderInicio(){
+  var el=q('inicio'); el.innerHTML='';
+  el.appendChild(h('div',{class:'hero'},
+    h('div',{class:'mono',id:'heroMono'},initials()),
+    h('div',{class:'names',id:'heroNames'},coupleName()),
+    h('div',{class:'div'}, h('i',{}), '✦', h('i',{})),
+    h('div',{class:'date'},'15 de maio de 2027 · sábado'),
+    h('div',{class:'place',id:'heroPlace'},(DB.cidade||'Goiânia/GO')+(DB.local?(' · '+DB.local):'')),
+    h('div',{class:'cd'}, h('b',{id:'heroDays'},days()), h('span',{},'dias para o grande dia'))
+  ));
+  var ct=countTasks(), perc=ct.t?Math.round(ct.dn/ct.t*100):0;
+  var next=[]; DB.cronograma.forEach(function(f){ f.tarefas.forEach(function(x){ if(!x.done&&next.length<6) next.push({x:x,fase:f.fase}); }); });
+  var np=h('div',{class:'card'}, h('h2',{},'👉 Próximos passos'),
+    h('div',{class:'prog'}, h('i',{style:'width:'+perc+'%'})),
+    h('div',{class:'mini'}, perc+'% concluído · '+ct.dn+' de '+ct.t+' tarefas'));
+  if(next.length){ next.forEach(function(it){
+    var row=h('div',{class:'ck'});
+    row.appendChild(cb(it.x,'done',function(){ renderInicio(); }));
+    row.appendChild(h('div',{class:'cx'}, h('div',{class:'ct'},it.x.t), h('span',{class:'ptag'},it.fase)));
+    np.appendChild(row);
+  }); } else np.appendChild(h('p',{class:'hint'},'Tudo em dia por aqui! 🎉'));
+  el.appendChild(np);
+  var contratado=0,pago=0; DB.pagamentos.forEach(function(p){contratado+=pn(p.total);pago+=pn(p.pago);});
+  var teto=pn(DB.teto), perc2=teto?Math.min(100,Math.round(contratado/teto*100)):0;
+  el.appendChild(h('div',{class:'card'}, h('h2',{},'💰 Orçamento'),
+    h('div',{class:'grid2'}, field('Meta (R$)',tf(DB,'meta','30000')), field('Teto (R$)',tf(DB,'teto','60000'))),
+    h('div',{class:'prog'}, h('i',{style:'width:'+perc2+'%'})),
+    h('div',{class:'mini'},'Contratado × teto: '+perc2+'%'),
+    h('div',{class:'kpi',style:'margin-top:10px'},
+      h('div',{class:'k'}, h('div',{class:'v'},fmt(contratado)), h('div',{class:'t'},'Contratado')),
+      h('div',{class:'k'}, h('div',{class:'v'},fmt(pago)), h('div',{class:'t'},'Já pago')),
+      h('div',{class:'k'}, h('div',{class:'v'},fmt(contratado-pago)), h('div',{class:'t'},'Saldo a pagar')),
+      h('div',{class:'k'}, h('div',{class:'v',style:(contratado>teto?'color:#a24b34':'')},fmt(teto-contratado)), h('div',{class:'t'},'Folga até o teto'))
+    ),
+    h('p',{class:'hint'},'Os valores vêm da aba Pagamentos. Meta enxuta de R$30 mil; o teto de R$60 mil evita surpresas.')
+  ));
+  el.appendChild(h('div',{class:'card'}, h('h2',{},'💍 Informações principais'),
+    h('div',{class:'grid2'}, field('Noiva',tf(DB,'noiva','Nome da noiva')), field('Noivo',tf(DB,'noivo','Nome do noivo'))),
+    h('div',{class:'grid2'}, field('Cidade',tf(DB,'cidade')), field('Horário da cerimônia',tf(DB,'hora','ex.: 16:00'))),
+    field('Local / espaço',tf(DB,'local','Nome do espaço de eventos'))
+  ));
+  var help=h('div',{class:'acc-b'},
+    h('p',{class:'hint'},'• Tudo o que você digita é salvo AUTOMATICAMENTE neste aparelho/navegador. Você não precisa apertar nada.'),
+    h('p',{class:'hint'},'• Para abrir no celular: envie este arquivo para você (WhatsApp/e-mail) ou salve no Google Drive/OneDrive; no celular, toque no arquivo e escolha "Abrir com Chrome/Safari". Se aparecer código, escolha abrir no navegador.'),
+    h('p',{class:'hint'},'• Para usar em OUTRO celular sem perder nada: toque em "Salvar cópia (backup)", copie o código e guarde numa conversa/nota sua. No outro aparelho, abra o site e use "Restaurar".'),
+    h('p',{class:'hint'},'• "Imprimir / PDF" gera um documento com tudo preenchido.'),
+    h('p',{class:'hint',style:(canStore?'display:none':'color:#a24b34')},'Atenção: este navegador não está salvando sozinho. Faça "Salvar cópia" ao terminar.')
+  );
+  var hc=h('div',{class:'card'});
+  var chev=h('span',{class:'chev'},'▸');
+  hc.appendChild(h('button',{class:'acc-h',onclick:function(){ var o=help.classList.toggle('open'); chev.className='chev'+(o?' up':''); }}, '📖 Como usar e abrir no celular', chev));
+  hc.appendChild(help); el.appendChild(hc);
+}
+
+function renderCronograma(){
+  var el=q('cronograma'); el.innerHTML='';
+  el.appendChild(h('div',{class:'card'}, h('h2',{},'🗓 Cronograma / plano de ação'), h('p',{class:'hint'},'Do mais distante ao dia do casamento. Marque cada tarefa; toque no título da fase para abrir/fechar.')));
+  DB.cronograma.forEach(function(fase,idx){
+    var done=fase.tarefas.filter(function(t){return t.done;}).length;
+    var body=h('div',{class:'acc-b'+(idx<2?' open':'')});
+    fase.tarefas.forEach(function(tk){ body.appendChild(taskRow(tk)); });
+    var chev=h('span',{class:'chev'+(idx<2?' up':'')},'▸');
+    var head=h('button',{class:'acc-h',onclick:function(){ var o=body.classList.toggle('open'); chev.className='chev'+(o?' up':''); }},
+      h('span',{class:'phase'},fase.fase), h('span',{class:'chip n'},done+'/'+fase.tarefas.length), chev);
+    el.appendChild(h('div',{class:'card'}, head, body));
+  });
+}
+function taskRow(tk){
+  var row=h('div',{class:'ck'+(tk.done?' done':'')});
+  row.appendChild(cb(tk,'done',function(){ row.className='ck'+(tk.done?' done':''); }));
+  var m1=h('input',{class:'cn',placeholder:'Prazo',style:'max-width:46%;display:inline-block',oninput:function(){tk.prazo=m1.value;saveD();}}); m1.value=tk.prazo||'';
+  var m2=h('input',{class:'cn',placeholder:'Responsável',style:'max-width:46%;display:inline-block;margin-left:6px',oninput:function(){tk.resp=m2.value;saveD();}}); m2.value=tk.resp||'';
+  row.appendChild(h('div',{class:'cx'}, h('div',{class:'ct'},tk.t), h('div',{},m1,m2)));
+  return row;
+}
+
+function renderFornecedores(){
+  var el=q('fornecedores'); el.innerHTML='';
+  el.appendChild(h('div',{class:'card'}, h('h2',{},'🤝 Fornecedores'), h('p',{class:'hint'},'Toque numa categoria para abrir. Preencha até 3 opções com valor e o que inclui, confira o "está incluso?" e defina a escolha. Se algo NÃO estiver incluso, anote onde contratar à parte.')));
+  var STATUS=['','Pesquisando','Orçamento recebido','Reservado','Contratado / pago'];
+  DB.categorias.forEach(function(cat){
+    var body=h('div',{class:'acc-b'});
+    body.appendChild(h('h3',{},'Opções de fornecedores'));
+    var ow=h('div',{}); cat.opcoes.forEach(function(o,i){ ow.appendChild(optBlock(cat,o,i)); }); body.appendChild(ow);
+    body.appendChild(h('button',{class:'btn s mini addrow',onclick:function(){ cat.opcoes.push(opt()); save(); ow.appendChild(optBlock(cat,cat.opcoes[cat.opcoes.length-1],cat.opcoes.length-1)); }},'+ opção'));
+    body.appendChild(h('h3',{},'Está incluso? (confirme com o fornecedor)'));
+    cat.itens.forEach(function(it){
+      var o=h('input',{class:'cn obs',placeholder:'Se NÃO: onde contratar + valor / observação',oninput:function(){it.obs=o.value;saveD();}}); o.value=it.obs||'';
+      body.appendChild(h('div',{class:'inc'}, h('div',{class:'lbl'},it.label), sel(it,'inc',['','Sim','Não','N/A']), o));
+    });
+    var chip=h('span',{class:'chip '+statusClass(cat.status)}, cat.status||'a definir');
+    body.appendChild(h('h3',{},'Decisão'));
+    body.appendChild(h('div',{class:'grid2'},
+      field('Opção escolhida', tf(cat,'decisao','Qual fornecedor / opção')),
+      field('Status', sel(cat,'status',STATUS,function(){ chip.className='chip '+statusClass(cat.status); chip.textContent=cat.status||'a definir'; }))
+    ));
+    body.appendChild(field('Observações', ta(cat,'obs','Anotações, condições, o que falta...')));
+    if(cat.pref){ var pf=h('div',{class:'pref'},'⭐ '+cat.pref); body.insertBefore(pf, body.firstChild); }
+    var chev=h('span',{class:'chev'},'▸');
+    var head=h('button',{class:'acc-h',onclick:function(){ var op=body.classList.toggle('open'); chev.className='chev'+(op?' up':''); }},
+      cat.nome, chip, chev);
+    el.appendChild(h('div',{class:'card'}, head, body));
+  });
+}
+function optBlock(cat,o,i){
+  return h('div',{class:'opt'},
+    h('div',{class:'oh'}, 'Opção '+(i+1), h('button',{class:'btn del mini',onclick:function(){ if(cat.opcoes.length<=1)return; cat.opcoes.splice(i,1); save(); renderFornecedores(); }},'remover')),
+    h('div',{class:'grid2'}, field('Fornecedor',tf(o,'nome','Nome')), field('Contato',tf(o,'contato','Tel / @ / site'))),
+    field('Valor (R$)', tf(o,'valor','ex.: 8.000')),
+    field('O que inclui', ta(o,'inclui','Descreva o que está incluído nesta opção'))
+  );
+}
+function statusClass(s){ if(s==='Contratado / pago'||s==='Reservado')return 'g'; if(s==='Orçamento recebido')return 'y'; return 'n'; }
+
+function renderEquipe(){
+  var el=q('equipe'); el.innerHTML='';
+  var card=h('div',{class:'card'}, h('h2',{},'👥 Prestadores no dia'), h('p',{class:'hint'},'Equipe que trabalha no dia. Preencha quantidade, diária, horário e contato.'));
+  var tb=h('tbody',{}); DB.equipe.forEach(function(r,i){ tb.appendChild(rowCells(r,['funcao','qtd','diaria','horario','obs'],['','num','num','',''],function(){DB.equipe.splice(i,1);save();renderEquipe();})); });
+  card.appendChild(h('div',{class:'twrap'}, h('table',{}, h('thead',{}, h('tr',{}, th('Função'),th('Qtd'),th('Diária (R$)'),th('Horário'),th('Contato / obs'),th(''))), tb)));
+  card.appendChild(h('button',{class:'btn s mini addrow',onclick:function(){ DB.equipe.push({funcao:'',qtd:'',diaria:'',horario:'',obs:''}); save(); renderEquipe(); }},'+ função'));
+  var tot=0; DB.equipe.forEach(function(r){ tot+=pn(r.diaria)*(pn(r.qtd)||1); });
+  card.appendChild(h('p',{class:'hint',style:'margin-top:8px'},'Estimativa (diária × qtd): '+fmt(tot)));
+  el.appendChild(card);
+}
+
+function renderDiaD(){
+  var el=q('diad'); el.innerHTML='';
+  var card=h('div',{class:'card'}, h('h2',{},'⏱ Cronograma do dia — 15/05/2027'), h('p',{class:'hint'},'Sugestão de timeline (ajuste os horários). Marque conforme acontece.'));
+  var tb=h('tbody',{});
+  DB.diad.forEach(function(r,i){
+    var tr=h('tr',{}, h('td',{style:'text-align:center'}, cb(r,'done')), tdIn(r,'hora'), tdIn(r,'ativ'), tdIn(r,'resp'),
+      h('td',{}, h('button',{class:'btn del mini',onclick:function(){DB.diad.splice(i,1);save();renderDiaD();}},'×')));
+    tb.appendChild(tr);
+  });
+  card.appendChild(h('div',{class:'twrap'}, h('table',{style:'min-width:520px'}, h('thead',{}, h('tr',{}, th('✓'),th('Hora'),th('Atividade'),th('Responsável'),th(''))), tb)));
+  card.appendChild(h('button',{class:'btn s mini addrow',onclick:function(){ DB.diad.push({hora:'',ativ:'',resp:'',done:false}); save(); renderDiaD(); }},'+ momento'));
+  el.appendChild(card);
+}
+
+function renderEssenciais(){
+  var el=q('essenciais'); el.innerHTML='';
+  el.appendChild(h('div',{class:'card'}, h('h2',{},'🎒 Essenciais — não esquecer'), h('p',{class:'hint'},'Listas de conferência para não deixar nada passar. Marque o que já resolveu.')));
+  var groups=[['🧰 Kit emergência (levar na necessaire)','kit'],['📅 Semana do casamento','semana'],['👜 O que levar / ter no dia','levar'],['💵 Pagamentos e gorjetas do dia','gorjetas']];
+  groups.forEach(function(g){
+    var card=h('div',{class:'card'}, h('h2',{style:'font-size:1.02rem'},g[0]));
+    card.appendChild(checklist(DB.essenciais[g[1]]));
+    card.appendChild(h('button',{class:'btn s mini addrow',onclick:function(){ DB.essenciais[g[1]].push(ck('')); save(); renderEssenciais(); }},'+ item'));
+    el.appendChild(card);
+  });
+}
+
+function renderPagamentos(){
+  var el=q('pagamentos'); el.innerHTML='';
+  var card=h('div',{class:'card'}, h('h2',{},'🧾 Controle de pagamentos'), h('p',{class:'hint'},'Registre total, entrada, parcelas e o que já foi pago. O saldo é calculado sozinho.'));
+  var tb=h('tbody',{}); var st=0,sp=0;
+  DB.pagamentos.forEach(function(r,i){ st+=pn(r.total); sp+=pn(r.pago);
+    var tr=h('tr',{}, tdIn(r,'forn'), tdIn(r,'total','num'), tdIn(r,'entrada','num'), tdIn(r,'parc'), tdIn(r,'venc'), tdIn(r,'pago','num'),
+      h('td',{class:'num',style:'font-weight:600'}, fmt(pn(r.total)-pn(r.pago))),
+      h('td',{}, h('button',{class:'btn del mini',onclick:function(){DB.pagamentos.splice(i,1);save();renderPagamentos();}},'×')));
+    tb.appendChild(tr);
+  });
+  var foot=h('tfoot',{}, h('tr',{}, h('td',{},'TOTAIS'), h('td',{class:'num'},fmt(st)), h('td',{}), h('td',{}), h('td',{}), h('td',{class:'num'},fmt(sp)), h('td',{class:'num'},fmt(st-sp)), h('td',{})));
+  card.appendChild(h('div',{class:'twrap'}, h('table',{style:'min-width:660px'}, h('thead',{}, h('tr',{}, th('Fornecedor / item'),th('Total'),th('Entrada'),th('Parcelas'),th('Próx. venc.'),th('Pago'),th('Saldo'),th(''))), tb, foot)));
+  card.appendChild(h('button',{class:'btn s mini addrow',onclick:function(){ DB.pagamentos.push({forn:'',total:'',entrada:'',parc:'',venc:'',pago:''}); save(); renderPagamentos(); }},'+ linha'));
+  var teto=pn(DB.teto);
+  card.appendChild(h('div',{class:'kpi',style:'margin-top:12px'},
+    h('div',{class:'k'}, h('div',{class:'v'},fmt(st)), h('div',{class:'t'},'Total contratado')),
+    h('div',{class:'k'}, h('div',{class:'v',style:(st>teto?'color:#a24b34':'')},fmt(teto-st)), h('div',{class:'t'},'Folga até o teto ('+fmt(teto)+')'))
+  ));
+  el.appendChild(card);
+}
+
+function renderConvidados(){
+  var el=q('convidados'); el.innerHTML='';
+  var total=0,conf=0,pend=0;
+  DB.convidados.forEach(function(g){ var p=(pn(g.ad)+pn(g.cr))||0; total+=p; if(g.conf==='Confirmado')conf+=p||1; if(g.conf==='Pendente')pend++; });
+  var card=h('div',{class:'card'}, h('h2',{},'📋 Convidados & RSVP'),
+    h('div',{class:'kpi',style:'margin:6px 0 10px'},
+      h('div',{class:'k'}, h('div',{class:'v'},total), h('div',{class:'t'},'na lista')),
+      h('div',{class:'k'}, h('div',{class:'v'},conf), h('div',{class:'t'},'confirmadas')),
+      h('div',{class:'k'}, h('div',{class:'v'},'~60'), h('div',{class:'t'},'meta')),
+      h('div',{class:'k'}, h('div',{class:'v'},pend), h('div',{class:'t'},'pendentes'))
+    ),
+    h('p',{class:'hint'},'Ad = adultos, Cr = crianças. Marque a confirmação e a mesa.'));
+  var tb=h('tbody',{});
+  DB.convidados.forEach(function(g,i){
+    var tr=h('tr',{}, tdIn(g,'nome'), tdIn(g,'grupo'), tdIn(g,'ad','num'), tdIn(g,'cr','num'),
+      h('td',{}, sel(g,'conf',['Pendente','Confirmado','Não vai'],function(){renderConvidados();})),
+      tdIn(g,'mesa'), tdIn(g,'obs'),
+      h('td',{}, h('button',{class:'btn del mini',onclick:function(){DB.convidados.splice(i,1);save();renderConvidados();}},'×')));
+    tb.appendChild(tr);
+  });
+  card.appendChild(h('div',{class:'twrap'}, h('table',{style:'min-width:680px'}, h('thead',{}, h('tr',{}, th('Nome / família'),th('Grupo'),th('Ad'),th('Cr'),th('Confirmação'),th('Mesa'),th('Contato / obs'),th(''))), tb)));
+  card.appendChild(h('button',{class:'btn p mini addrow',onclick:function(){ DB.convidados.push({nome:'',grupo:'',ad:'',cr:'',conf:'Pendente',mesa:'',obs:''}); save(); renderConvidados(); }},'+ convidado'));
+  el.appendChild(card);
+}
+
+function renderNoivos(){
+  var el=q('noivos'); el.innerHTML='';
+  el.appendChild(h('div',{class:'card'}, h('h2',{},'📄 Documentação — habilitação'),
+    h('p',{class:'hint'},'Prazos variam por cartório. Dê entrada com antecedência (recomendável ~90 a 60 dias antes). Confirme documentos e datas no cartório de registro civil de Goiânia.'),
+    checklist(DB.docs)));
+  el.appendChild(h('div',{class:'card'}, h('h2',{},'💄 Beleza e bem-estar'), checklist(DB.beleza)));
+  el.appendChild(h('div',{class:'card'}, h('h2',{},'✈️ Lua de mel'), checklist(DB.luademel)));
+}
+
+function checklist(arr){
+  var box=h('div',{});
+  arr.forEach(function(it){
+    var row=h('div',{class:'ck'+(it.done?' done':'')});
+    row.appendChild(cb(it,'done',function(){ row.className='ck'+(it.done?' done':''); }));
+    var ct;
+    if(it.t===''){ ct=h('input',{class:'f',placeholder:'Escreva o item...',oninput:function(){it.t=ct.value;saveD();}}); }
+    else ct=h('div',{class:'ct'},it.t);
+    var nt=h('input',{class:'cn',placeholder:'Observação...',oninput:function(){it.obs=nt.value;saveD();}}); nt.value=it.obs||'';
+    row.appendChild(h('div',{class:'cx'}, ct, nt)); box.appendChild(row);
+  });
+  return box;
+}
+function rowCells(o,keys,types,onDel){
+  var tr=h('tr',{}); keys.forEach(function(k,i){ tr.appendChild(tdIn(o,k,types[i])); });
+  tr.appendChild(h('td',{}, h('button',{class:'btn del mini',onclick:function(){ onDel(); }},'×'))); return tr;
+}
+function tdIn(o,k,cls){ var td=h('td',{class:(cls==='num'?'num':'')}); var e=h('input',{type:'text',oninput:function(){o[k]=e.value;saveD();}}); e.value=o[k]==null?'':o[k]; td.appendChild(e); return td; }
+function th(t){ return h('th',{},t); }
+function q(n){ return document.querySelector('.tab[data-tab="'+n+'"]'); }
+
+var TABS=[['inicio','Início'],['cronograma','Cronograma'],['fornecedores','Fornecedores'],['equipe','Equipe'],['diad','Dia D'],['essenciais','Essenciais'],['pagamentos','Pagamentos'],['convidados','Convidados'],['noivos','Noivos & Docs']];
+var RENDER={inicio:renderInicio,cronograma:renderCronograma,fornecedores:renderFornecedores,equipe:renderEquipe,diad:renderDiaD,essenciais:renderEssenciais,pagamentos:renderPagamentos,convidados:renderConvidados,noivos:renderNoivos};
+function buildTabs(){ var t=document.getElementById('tabs'); t.innerHTML=''; TABS.forEach(function(tb){ t.appendChild(h('button',{'data-t':tb[0],onclick:function(){ showTab(tb[0]); }},tb[1])); }); }
+function showTab(name){
+  document.querySelectorAll('.tab').forEach(function(s){ s.classList.toggle('active', s.getAttribute('data-tab')===name); });
+  document.querySelectorAll('#tabs button').forEach(function(b){ b.classList.toggle('on', b.getAttribute('data-t')===name); });
+  RENDER[name](); updateHeader(); window.scrollTo(0,0);
+}
+
+function closeModal(){ document.getElementById('ov').className='overlay'; }
+document.getElementById('ov').onclick=function(e){ if(e.target.id==='ov') closeModal(); };
+function openBackup(){
+  var code=JSON.stringify(DB);
+  var mBox=document.getElementById('modal'); mBox.innerHTML='';
+  var t=h('textarea',{readonly:'readonly'}); t.value=code;
+  mBox.appendChild(h('h2',{},'💾 Salvar cópia (backup)'));
+  mBox.appendChild(h('p',{class:'hint'},'Copie o código abaixo e cole numa conversa sua no WhatsApp ou nas Notas para guardar. É assim que você leva os dados para outro celular (use "Restaurar" lá).'));
+  mBox.appendChild(t);
+  mBox.appendChild(h('div',{style:'display:flex;gap:8px;flex-wrap:wrap;margin-top:10px'},
+    h('button',{class:'btn p',onclick:function(){ copyText(code,t); }},'📋 Copiar código'),
+    h('button',{class:'btn s',onclick:function(){ downloadJSON(code); }},'⬇ Baixar arquivo'),
+    h('button',{class:'btn s',onclick:closeModal},'Fechar')
+  ));
+  document.getElementById('ov').className='overlay show';
+}
+function openRestore(){
+  var mBox=document.getElementById('modal'); mBox.innerHTML='';
+  var t=h('textarea',{placeholder:'Cole aqui o código do backup...'});
+  mBox.appendChild(h('h2',{},'📥 Restaurar backup'));
+  mBox.appendChild(h('p',{class:'hint'},'Cole o código que você salvou e toque em Restaurar. Isso substitui os dados atuais deste aparelho.'));
+  mBox.appendChild(t);
+  mBox.appendChild(h('div',{style:'display:flex;gap:8px;flex-wrap:wrap;margin-top:10px'},
+    h('button',{class:'btn p',onclick:function(){ doRestore(t.value); }},'Restaurar'),
+    h('button',{class:'btn s',onclick:closeModal},'Cancelar')
+  ));
+  document.getElementById('ov').className='overlay show';
+}
+function doRestore(txt){
+  try{ var d=JSON.parse(txt); if(!d||!d.categorias) throw 0; DB=d; var def=defaultDB(); for(var k in def){ if(!(k in DB)) DB[k]=def[k]; } if(!DB.essenciais||Array.isArray(DB.essenciais)) DB.essenciais=def.essenciais; save(); closeModal(); showTab('inicio'); toast('Backup restaurado!'); }
+  catch(e){ toast('Código inválido — confira e tente de novo.'); }
+}
+function copyText(txt,ta){
+  function ok(){ toast('Copiado!'); } function fb(){ try{ ta.focus(); ta.select(); ta.setSelectionRange(0,999999); document.execCommand('copy'); toast('Copiado!'); }catch(e){ toast('Selecione o texto e copie manualmente.'); } }
+  if(navigator.clipboard&&navigator.clipboard.writeText){ navigator.clipboard.writeText(txt).then(ok,fb); } else fb();
+}
+function downloadJSON(code){ try{ var b=new Blob([code],{type:'application/json'}); var a=document.createElement('a'); a.href=URL.createObjectURL(b); a.download='casamento-15-05-2027-backup.json'; a.click(); toast('Arquivo gerado.'); }catch(e){ toast('Use "Copiar código" no celular.'); } }
+
+buildTabs(); updateHeader(); showTab('inicio');
+</script>
+</body>
+</html>
