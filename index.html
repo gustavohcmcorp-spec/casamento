@@ -217,7 +217,9 @@ function migrateDB(raw){
   return {data:data,changed:true};
 }
 function validateDB(data){ return !!(data&&data.__v===SCHEMA_VERSION&&data.config&&Array.isArray(data.convidados)); }
-if(new URLSearchParams(location.search).has('test')) window.__test={makeId:makeId,migrateDB:migrateDB,validateDB:validateDB};
+function isLocalTestHost(hostname,search){ return (hostname==='127.0.0.1'||hostname==='localhost')&&new URLSearchParams(search).has('test'); }
+function isLocalTestMode(hostname,search){ return isLocalTestHost(hostname,search)&&new URLSearchParams(search).has('authenticated'); }
+if(isLocalTestHost(location.hostname,location.search)) window.__test={makeId:makeId,migrateDB:migrateDB,validateDB:validateDB,isLocalTestMode:isLocalTestMode};
 
 function defaultDB(){ return {
  __v:2, noiva:'', noivo:'', local:'', cidade:'Goiânia/GO', hora:'16:00', meta:'30000', teto:'60000',
@@ -642,7 +644,7 @@ async function login(){
   }catch(error){ setLoginMessage('Não foi possível entrar. Confira o nome escolhido e a senha.'); }
 }
 setupLogin();
-if(new URLSearchParams(location.search).has('test')&&new URLSearchParams(location.search).has('authenticated')) startApp();
+if(isLocalTestMode(location.hostname,location.search)) startApp();
 </script>
 </body>
 </html>
