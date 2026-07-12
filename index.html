@@ -574,7 +574,8 @@ function renderConvidados(){
       h('div',{class:'k'}, h('div',{class:'v'},DB.convidadosPrevistos||'0'), h('div',{class:'t'},'previstos')),
       h('div',{class:'k'}, h('div',{class:'v'},pend), h('div',{class:'t'},'pendentes'))
     ),
-    h('p',{class:'hint'},'Ad = adultos, Cr = crianças. Marque a confirmação e a mesa.'));
+    h('p',{class:'hint'},'Ad = adultos, Cr = crianças. Marque a confirmação e a mesa.'),
+    h('div',{'data-testid':'rsvp-progress'},h('div',{class:'mini'},conf+' de '+(DB.convidadosPrevistos||0)+' confirmações · '+(pn(DB.convidadosPrevistos)?Math.min(100,Math.round(conf/pn(DB.convidadosPrevistos)*100)):0)+'%'),h('div',{class:'prog'},h('i',{style:'width:'+(pn(DB.convidadosPrevistos)?Math.min(100,Math.round(conf/pn(DB.convidadosPrevistos)*100)):0)+'%'}))));
   var tb=h('tbody',{});
   DB.convidados.forEach(function(g,i){
     var tr=h('tr',{}, tdIn(g,'nome'), tdIn(g,'grupo'), tdIn(g,'ad','num'), tdIn(g,'cr','num'),
