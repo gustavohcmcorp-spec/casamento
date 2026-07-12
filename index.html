@@ -7,7 +7,7 @@
 <title>Plano de Casamento — 15/05/2027 · Goiânia</title>
 <style>
   :root{
-    --bg:#f6f1e8; --card:#fffdf9; --ink:#3b3a34; --muted:#8c887c;
+    --bg:#f6f1e8; --card:#f7f0e5; --ink:#3b3a34; --muted:#7c786e;
     --line:#e7ddcb; --sage:#6f8064; --sage-d:#4f5d45; --gold:#bd9a3f; --gold-l:#e7d29a;
     --soft:#efe7d7; --cream:#faf5ec; --ok:#5b8c5a; --rose:#c08a72;
     --sh:0 3px 14px rgba(90,75,45,.09);
@@ -404,7 +404,7 @@ function renderInicio(){
   var preventive=[];
   if(teto&&contratado>teto)preventive.push('O valor comprometido ultrapassa o teto do orçamento.');
   else if(teto&&contratado>teto*.9)preventive.push('O valor comprometido está próximo do teto do orçamento.');
-  var pendingSuppliers=(DB.categorias||[]).filter(function(cat){return cat.opcaoEscolhida===undefined||cat.opcaoEscolhida===null;}).length;
+  var pendingSuppliers=(DB.categorias||[]).filter(function(cat){return !cat.naoTera&&(cat.opcaoEscolhida===undefined||cat.opcaoEscolhida===null);}).length;
   if(pendingSuppliers)preventive.push(pendingSuppliers+' fornecedores ainda não foram escolhidos.');
   var rsvpConfirmed=(DB.convidados||[]).reduce(function(sum,g){return sum+(g.conf==='Confirmado'?((pn(g.ad)+pn(g.cr))||1):0);},0);
   if(pn(DB.convidadosPrevistos)&&rsvpConfirmed<pn(DB.convidadosPrevistos))preventive.push('RSVP ainda incompleto: '+rsvpConfirmed+' de '+DB.convidadosPrevistos+' confirmações.');
@@ -413,8 +413,8 @@ function renderInicio(){
   if(DB.prazoRSVP&&pn(DB.convidadosPrevistos)>rsvpConfirmed){var diff=Math.ceil((new Date(DB.prazoRSVP+'T12:00:00')-new Date())/86400000);if(diff<=14)preventive.push('Prazo de RSVP próximo: faltam '+Math.max(0,diff)+' dias.');}
   if(preventive.length)el.appendChild(h('div',{class:'card','data-testid':'preventive-alerts'},h('h2',{},'⚠️ Atenção preventiva'),preventive.map(function(item){return h('p',{class:'hint'},'• '+item);}))); 
   var nextCard=nextPaymentCard('next-payment'); if(nextCard)el.appendChild(nextCard);
-  var chosenSuppliers=(DB.categorias||[]).filter(function(cat){return cat.opcaoEscolhida!==undefined&&cat.opcaoEscolhida!==null;}).length;
-  var supplierTotal=(DB.categorias||[]).length, supplierPercent=supplierTotal?Math.round(chosenSuppliers/supplierTotal*100):0;
+  var chosenSuppliers=(DB.categorias||[]).filter(function(cat){return !cat.naoTera&&cat.opcaoEscolhida!==undefined&&cat.opcaoEscolhida!==null;}).length;
+  var supplierTotal=(DB.categorias||[]).filter(function(cat){return !cat.naoTera;}).length, supplierPercent=supplierTotal?Math.round(chosenSuppliers/supplierTotal*100):0;
   el.appendChild(h('div',{class:'card','data-testid':'supplier-progress'},h('h2',{},'🤝 Fornecedores'),h('div',{class:'mini'},chosenSuppliers+' de '+supplierTotal+' escolhidos · '+supplierPercent+'%'),h('div',{class:'prog'},h('i',{style:'width:'+supplierPercent+'%'})),h('p',{class:'hint'},'Use “Escolher esta opção” na aba Fornecedores para enviar o contratado aos Pagamentos.')));
   el.appendChild(h('div',{class:'card'}, h('h2',{},'💍 Informações principais'),
     h('p',{class:'hint'},'Convidados previstos: ',h('b',{'data-testid':'home-guests-planned'},DB.convidadosPrevistos||'0')),
@@ -469,8 +469,8 @@ function renderFornecedores(){
     var chip=h('span',{class:'chip '+statusClass(cat.status)}, cat.status||'a definir');
     body.appendChild(h('h3',{},'Decisão'));
     body.appendChild(h('div',{class:'grid2'},
-      field('Opção escolhida', tf(cat,'decisao','Qual fornecedor / opção')),
-      field('Status', sel(cat,'status',STATUS,function(){ chip.className='chip '+statusClass(cat.status); chip.textContent=cat.status||'a definir'; }))
+      field('Status', sel(cat,'status',STATUS,function(){ chip.className='chip '+statusClass(cat.status); chip.textContent=cat.status||'a definir'; })),
+      field('Categoria', sel(cat,'naoTera',['','Não terá'],function(){save();renderFornecedores();}))
     ));
     body.appendChild(field('Observações', ta(cat,'obs','Anotações, condições, o que falta...')));
     if(cat.pref){ var pf=h('div',{class:'pref'},'⭐ '+cat.pref); body.insertBefore(pf, body.firstChild); }
@@ -484,6 +484,7 @@ function optBlock(cat,o,i){
   if(!o.itens)o.itens=cat.itens.map(function(item){return {label:item.label,inc:'',obs:''};});
   var included=h('details',{},h('summary',{},'Itens incluídos e pendências'));
   o.itens.forEach(function(item){ var note=h('input',{class:'cn obs',placeholder:'Se não incluso: onde contratar / observação',oninput:function(){item.obs=note.value;saveD();}}); note.value=item.obs||''; included.appendChild(h('div',{class:'inc'},h('div',{class:'lbl'},item.label),sel(item,'inc',['','Sim','Não','N/A']),note)); });
+  var includedSummary=h('details',{},h('summary',{},'Resumo automático do que inclui'),h('p',{class:'hint'},(o.itens.filter(function(item){return item.inc==='Sim';}).map(function(item){return item.label;}).join(' • ')||'Marque os itens incluídos para gerar o resumo.')));
   var maps=h('a',{class:'btn s mini',target:'_blank',href:'https://www.google.com/maps/search/?api=1&query='+encodeURIComponent(o.visitaEndereco||''),'aria-label':'Abrir no Google Maps'},'Abrir no Google Maps');
   var visit=h('details',{},h('summary',{},'Visita ao fornecedor'),h('div',{class:'grid2'},field('Data',tf(o,'visitaData','', 'date')),field('Horário',tf(o,'visitaHora','', 'time'))),field('Endereço',tf(o,'visitaEndereco','Endereço da visita', 'text',function(){maps.href='https://www.google.com/maps/search/?api=1&query='+encodeURIComponent(o.visitaEndereco||'');})),field('Observações',ta(o,'visitaObs','Pontos para conferir')),h('div',{style:'display:flex;gap:6px;flex-wrap:wrap;margin-top:7px'},maps,h('button',{class:'btn mini',onclick:function(){downloadVisitEvent(o);}},'Adicionar à agenda')));
   return h('div',{class:'opt'},
@@ -491,18 +492,18 @@ function optBlock(cat,o,i){
     h('div',{class:'grid2'}, field('Fornecedor',tf(o,'nome','Nome')), field('Contato',tf(o,'contato','Tel / @ / site'))),
     h('div',{class:'grid2'},field('Cobrança',sel(o,'tipoCobranca',['fechado','porPessoa'],function(){save();renderFornecedores();})),field(o.tipoCobranca==='porPessoa'?'Valor por pessoa':'Valor (R$)',moneyInput(o,o.tipoCobranca==='porPessoa'?'valorUnitario':'valor','0'))),
     o.tipoCobranca==='porPessoa'?h('p',{class:'hint'},'Estimativa: '+formatMoney(pn(o.valorUnitario)*pn(DB.convidadosPrevistos))+' para '+(DB.convidadosPrevistos||0)+' convidados'):null,
-    field('O que inclui', ta(o,'inclui','Descreva o que está incluído nesta opção')),
-    included,visit
+    field('Complementos do que inclui', ta(o,'inclui','Adicione algo que não esteja no checklist')),
+    includedSummary,included,visit
   );
 }
 function chooseSupplierOption(cat,o,index){
   var label=cat.nome.replace(/^\d+\.\s*/,'').replace(/\s*\(.*/,''), key=label.toLowerCase().split(' ')[0];
   var p=DB.pagamentos.find(function(item){return (item.forn||'').toLowerCase().indexOf(key)>=0;});
   if(!p){p=ensurePayment({forn:label,total:''});DB.pagamentos.push(p);} else Object.assign(p,ensurePayment(p));
-  p.forn=o.nome||label; p.total=o.valor||p.total; p.tipoCobranca=o.tipoCobranca||'fechado'; p.valorUnitario=o.valorUnitario||p.valorUnitario;
+  p.forn=o.nome||label; p.total=o.valor||p.total; p.tipoCobranca=o.tipoCobranca||'fechado'; p.valorUnitario=o.valorUnitario||p.valorUnitario; o.pagamentoId=p.id;
   cat.opcaoEscolhida=index; cat.decisao=p.forn; cat.status='Reservado'; cat.open=true; save(); renderFornecedores(); toast('Opção enviada para Pagamentos.');
 }
-function unchooseSupplierOption(cat){ delete cat.opcaoEscolhida; delete cat.decisao; if(cat.status==='Reservado')cat.status='Orçamento recebido'; cat.open=true; save();renderFornecedores();toast('Escolha desfeita; os dados foram mantidos.'); }
+function unchooseSupplierOption(cat){ var option=cat.opcoes[cat.opcaoEscolhida]; if(option&&option.pagamentoId)DB.pagamentos=DB.pagamentos.filter(function(payment){return payment.id!==option.pagamentoId;}); if(option)delete option.pagamentoId; delete cat.opcaoEscolhida; delete cat.decisao; if(cat.status==='Reservado')cat.status='Orçamento recebido'; cat.open=true; save();renderFornecedores();toast('Escolha e pagamento vinculado removidos.'); }
 function downloadVisitEvent(o){
   if(!o.visitaData||!o.visitaHora){toast('Informe data e horário da visita.');return;}
   var start=o.visitaData.replace(/-/g,'')+'T'+o.visitaHora.replace(':','')+'00';
