@@ -408,6 +408,9 @@ function renderInicio(){
   if(pendingSuppliers)preventive.push(pendingSuppliers+' fornecedores ainda não foram escolhidos.');
   var rsvpConfirmed=(DB.convidados||[]).reduce(function(sum,g){return sum+(g.conf==='Confirmado'?((pn(g.ad)+pn(g.cr))||1):0);},0);
   if(pn(DB.convidadosPrevistos)&&rsvpConfirmed<pn(DB.convidadosPrevistos))preventive.push('RSVP ainda incompleto: '+rsvpConfirmed+' de '+DB.convidadosPrevistos+' confirmações.');
+  var scopePending=0; (DB.categorias||[]).forEach(function(cat){ if(cat.opcaoEscolhida!==undefined&&cat.opcoes[cat.opcaoEscolhida])scopePending+=(cat.opcoes[cat.opcaoEscolhida].itens||[]).filter(function(item){return item.inc!==''&&item.inc!=='Sim'&&item.inc!=='N/A';}).length; });
+  if(scopePending)preventive.push(scopePending+' itens não inclusos em fornecedores escolhidos precisam de solução.');
+  if(DB.prazoRSVP&&pn(DB.convidadosPrevistos)>rsvpConfirmed){var diff=Math.ceil((new Date(DB.prazoRSVP+'T12:00:00')-new Date())/86400000);if(diff<=14)preventive.push('Prazo de RSVP próximo: faltam '+Math.max(0,diff)+' dias.');}
   if(preventive.length)el.appendChild(h('div',{class:'card','data-testid':'preventive-alerts'},h('h2',{},'⚠️ Atenção preventiva'),preventive.map(function(item){return h('p',{class:'hint'},'• '+item);}))); 
   var nextCard=nextPaymentCard('next-payment'); if(nextCard)el.appendChild(nextCard);
   var chosenSuppliers=(DB.categorias||[]).filter(function(cat){return cat.opcaoEscolhida!==undefined&&cat.opcaoEscolhida!==null;}).length;
