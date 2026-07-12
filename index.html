@@ -481,13 +481,15 @@ function optBlock(cat,o,i){
   if(!o.itens)o.itens=cat.itens.map(function(item){return {label:item.label,inc:'',obs:''};});
   var included=h('details',{},h('summary',{},'Itens incluídos e pendências'));
   o.itens.forEach(function(item){ var note=h('input',{class:'cn obs',placeholder:'Se não incluso: onde contratar / observação',oninput:function(){item.obs=note.value;saveD();}}); note.value=item.obs||''; included.appendChild(h('div',{class:'inc'},h('div',{class:'lbl'},item.label),sel(item,'inc',['','Sim','Não','N/A']),note)); });
+  var maps=h('a',{class:'btn s mini',target:'_blank',href:'https://www.google.com/maps/search/?api=1&query='+encodeURIComponent(o.visitaEndereco||''),'aria-label':'Abrir no Google Maps'},'Abrir no Google Maps');
+  var visit=h('details',{},h('summary',{},'Visita ao fornecedor'),h('div',{class:'grid2'},field('Data',tf(o,'visitaData','', 'date')),field('Horário',tf(o,'visitaHora','', 'time'))),field('Endereço',tf(o,'visitaEndereco','Endereço da visita', 'text',function(){maps.href='https://www.google.com/maps/search/?api=1&query='+encodeURIComponent(o.visitaEndereco||'');})),maps);
   return h('div',{class:'opt'},
     h('div',{class:'oh'}, 'Opção '+(i+1)+(cat.opcaoEscolhida===i?' · ✓ Escolhida':''), h('div',{style:'display:flex;gap:5px'},h('button',{class:'btn s mini',onclick:function(){chooseSupplierOption(cat,o,i);}},cat.opcaoEscolhida===i?'✓ Escolhido':'Escolher esta opção'),h('button',{class:'btn del mini',onclick:function(){ if(cat.opcoes.length<=1)return; cat.opcoes.splice(i,1); save(); renderFornecedores(); }},'remover'))),
     h('div',{class:'grid2'}, field('Fornecedor',tf(o,'nome','Nome')), field('Contato',tf(o,'contato','Tel / @ / site'))),
     h('div',{class:'grid2'},field('Cobrança',sel(o,'tipoCobranca',['fechado','porPessoa'],function(){save();renderFornecedores();})),field(o.tipoCobranca==='porPessoa'?'Valor por pessoa':'Valor (R$)',moneyInput(o,o.tipoCobranca==='porPessoa'?'valorUnitario':'valor','0'))),
     o.tipoCobranca==='porPessoa'?h('p',{class:'hint'},'Estimativa: '+formatMoney(pn(o.valorUnitario)*pn(DB.convidadosPrevistos))+' para '+(DB.convidadosPrevistos||0)+' convidados'):null,
     field('O que inclui', ta(o,'inclui','Descreva o que está incluído nesta opção')),
-    included
+    included,visit
   );
 }
 function chooseSupplierOption(cat,o,index){
