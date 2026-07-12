@@ -568,6 +568,15 @@ function renderPagamentos(){
   el.appendChild(card);
 }
 
+function prepareWhatsAppInvite(g){
+  var phone=(g.telefone||'').replace(/\D/g,'');
+  if(!phone){toast('Informe o WhatsApp do convidado antes de preparar o convite.');return;}
+  var name=g.nome||'querido(a) convidado(a)';
+  var text='Olá, '+name+'! 💍\n\nEstamos muito felizes em convidar você para o nosso casamento em 15/05/2027.\n\nPedimos, por gentileza, que confirme sua presença. Esperamos você!';
+  g.convite='Preparado no WhatsApp'; g.primeiroEnvio=g.primeiroEnvio||new Date().toISOString().slice(0,10); save();
+  window.open('https://wa.me/'+phone+'?text='+encodeURIComponent(text),'_blank');
+}
+
 function renderConvidados(){
   var el=q('convidados'); el.innerHTML='';
   var total=0,conf=0,pend=0,enviados=0;
@@ -587,13 +596,15 @@ function renderConvidados(){
   var tb=h('tbody',{});
   DB.convidados.forEach(function(g,i){
     var tr=h('tr',{}, tdIn(g,'nome'), tdIn(g,'grupo'), tdIn(g,'ad','num'), tdIn(g,'cr','num'),
-      h('td',{}, sel(g,'convite',['Não enviado','Enviado'],function(){renderConvidados();})),
+      tdIn(g,'telefone'),
+      h('td',{}, sel(g,'convite',['Não enviado','Preparado no WhatsApp','Enviado','Lembrete enviado'],function(){renderConvidados();})),
       h('td',{}, sel(g,'conf',['Pendente','Confirmado','Não vai'],function(){renderConvidados();})),
       tdIn(g,'mesa'), tdIn(g,'obs'),
+      h('td',{}, h('button',{class:'btn s mini',onclick:function(){prepareWhatsAppInvite(g);}},'Preparar WhatsApp')),
       h('td',{}, h('button',{class:'btn del mini',onclick:function(){DB.convidados.splice(i,1);save();renderConvidados();}},'×')));
     tb.appendChild(tr);
   });
-  card.appendChild(h('div',{class:'twrap'}, h('table',{style:'min-width:760px'}, h('thead',{}, h('tr',{}, th('Nome / família'),th('Grupo'),th('Ad'),th('Cr'),th('Convite'),th('Confirmação'),th('Mesa'),th('Contato / obs'),th(''))), tb)));
+  card.appendChild(h('div',{class:'twrap'}, h('table',{style:'min-width:900px'}, h('thead',{}, h('tr',{}, th('Nome / família'),th('Grupo'),th('Ad'),th('Cr'),th('WhatsApp'),th('Convite'),th('Confirmação'),th('Mesa'),th('Contato / obs'),th(''),th(''))), tb)));
   card.appendChild(h('button',{class:'btn p mini addrow',onclick:function(){ DB.convidados.push({nome:'',grupo:'',ad:'',cr:'',convite:'Não enviado',conf:'Pendente',mesa:'',obs:''}); save(); renderConvidados(); }},'+ convidado'));
   el.appendChild(card);
 }
