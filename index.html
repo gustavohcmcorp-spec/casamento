@@ -100,6 +100,9 @@
   .toast.show{opacity:1}
   .overlay{position:fixed;inset:0;background:rgba(45,38,25,.55);display:none;align-items:center;justify-content:center;padding:14px;z-index:80}
   .overlay.show{display:flex}
+  .login{position:fixed;inset:0;z-index:100;background:linear-gradient(145deg,#f6f1e8,#e8dfcd);display:flex;align-items:center;justify-content:center;padding:18px}
+  .login[hidden]{display:none}.login .modal{max-width:420px;text-align:center}.login .who{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin:16px 0}.login .who .btn{min-height:48px}.login .who .btn.sel{outline:3px solid var(--gold-l);background:var(--sage-d)}
+  .sync{font-size:.72rem;color:var(--gold-l);margin-left:8px}
   .modal{background:#fff;border-radius:18px;max-width:540px;width:100%;max-height:86vh;overflow:auto;padding:18px}
   .modal h2{color:var(--sage-d);font-size:1.15rem;margin-bottom:6px}
   .modal textarea{width:100%;height:150px;font-family:monospace;font-size:.72rem;border:1px solid var(--line);border-radius:10px;padding:9px;margin-top:8px}
@@ -112,7 +115,22 @@
 </style>
 </head>
 <body>
-<div class="top" id="top"></div>
+<div class="login" id="login" aria-live="polite">
+  <div class="modal">
+    <div class="mono">G&G</div>
+    <h1>Acesso privado</h1>
+    <p class="hint">Planejamento do casamento — somente pessoas convidadas.</p>
+    <div class="who" role="group" aria-label="Quem está acessando">
+      <button class="btn s" type="button" data-profile="gustavo">Entrar como Gustavo</button>
+      <button class="btn s" type="button" data-profile="gleicianne">Entrar como Gleicianne</button>
+    </div>
+    <label class="fl" for="login-password">Senha</label>
+    <input class="f" id="login-password" type="password" autocomplete="current-password" aria-label="Senha">
+    <p class="hint" id="login-message">Escolha seu nome e informe sua senha.</p>
+    <button class="btn p" id="login-submit" type="button">Entrar no painel</button>
+  </div>
+</div>
+<div class="top" id="top" aria-live="polite"></div>
 <div class="tabs" id="tabs"></div>
 <div class="wrap">
   <section class="tab" data-tab="inicio"></section>
@@ -128,8 +146,6 @@
 
 <div class="toast" id="toast"></div>
 <div class="bar">
-  <button class="btn gold" onclick="openBackup()">💾 Salvar cópia (backup)</button>
-  <button class="btn s" onclick="openRestore()">📥 Restaurar</button>
   <button class="btn s" onclick="window.print()">🖨 Imprimir / PDF</button>
 </div>
 
@@ -154,8 +170,8 @@ function pn(v){ if(v==null)return 0; v=(''+v).replace(/[^0-9,.-]/g,'').replace(/
 function fmt(n){ return n.toLocaleString('pt-BR',{style:'currency',currency:'BRL',maximumFractionDigits:0}); }
 function toast(m){ var t=document.getElementById('toast'); t.textContent=m; t.className='toast show'; clearTimeout(toast._t); toast._t=setTimeout(function(){t.className='toast';},1400); }
 
-var KEY='casamento_2027_goiania_v2', DB, saveT, canStore=true;
-function save(){ try{ localStorage.setItem(KEY,JSON.stringify(DB)); }catch(e){ canStore=false; } updateHeader(); }
+var KEY='casamento_2027_goiania_v2', OUTBOX_KEY='casamento_2027_outbox_v1', DB, saveT, canStore=true, syncService=null;
+function save(){ try{ localStorage.setItem(KEY,JSON.stringify(DB)); }catch(e){ canStore=false; } if(syncService)syncService.queueSnapshot(DB); updateHeader(); }
 function saveD(){ clearTimeout(saveT); saveT=setTimeout(save,350); }
 function load(){ try{ var s=localStorage.getItem(KEY); if(s)return JSON.parse(s); }catch(e){ canStore=false; } return null; }
 
@@ -168,6 +184,40 @@ function field(l,n){ return h('div',{class:'field'}, h('label',{class:'fl'},l), 
 function CAT(nome,pref,itens){ return {nome:nome,pref:pref||'',itens:itens.map(function(t){return {label:t,inc:'',obs:''};}),opcoes:[opt(),opt(),opt()],decisao:'',status:'',obs:''}; }
 function opt(){ return {nome:'',contato:'',valor:'',inclui:''}; }
 function ck(t){ return {t:t,done:false,obs:''}; }
+
+var SCHEMA_VERSION=3;
+function makeId(prefix){
+  var value=(globalThis.crypto&&globalThis.crypto.randomUUID)?globalThis.crypto.randomUUID():(Date.now().toString(36)+'_'+Math.random().toString(36).slice(2));
+  return prefix+'_'+value;
+}
+function withMeta(item,prefix){
+  var now=Date.now(), copy=item||{};
+  return Object.assign({},copy,{id:copy.id||makeId(prefix),createdAt:copy.createdAt||now,updatedAt:copy.updatedAt||now,archivedAt:copy.archivedAt||null});
+}
+function migrateRecords(items,prefix){ return (items||[]).map(function(item){ return withMeta(item,prefix); }); }
+function migrateDB(raw){
+  var source;
+  try{ source=JSON.parse(JSON.stringify(raw||{})); }catch(e){ source={}; }
+  if(source.__v===SCHEMA_VERSION) return {data:source,changed:false};
+  var defaults=defaultDB();
+  var data=Object.assign({},defaults,source,{__v:SCHEMA_VERSION});
+  data.config={
+    noiva:source.noiva!=null?source.noiva:(source.config&&source.config.noiva)||'',
+    noivo:source.noivo!=null?source.noivo:(source.config&&source.config.noivo)||'',
+    cidade:source.cidade!=null?source.cidade:(source.config&&source.config.cidade)||'Goiânia/GO',
+    local:source.local!=null?source.local:(source.config&&source.config.local)||'',
+    hora:source.hora!=null?source.hora:(source.config&&source.config.hora)||'16:00',
+    meta:source.meta!=null?source.meta:(source.config&&source.config.meta)||'30000',
+    teto:source.teto!=null?source.teto:(source.config&&source.config.teto)||'60000'
+  };
+  data.convidados=migrateRecords(source.convidados||defaults.convidados,'con');
+  data.pagamentos=migrateRecords(source.pagamentos||defaults.pagamentos,'pag');
+  data.equipe=migrateRecords(source.equipe||defaults.equipe,'eqp');
+  data.diad=migrateRecords(source.diad||defaults.diad,'dia');
+  return {data:data,changed:true};
+}
+function validateDB(data){ return !!(data&&data.__v===SCHEMA_VERSION&&data.config&&Array.isArray(data.convidados)); }
+if(new URLSearchParams(location.search).has('test')) window.__test={makeId:makeId,migrateDB:migrateDB,validateDB:validateDB};
 
 function defaultDB(){ return {
  __v:2, noiva:'', noivo:'', local:'', cidade:'Goiânia/GO', hora:'16:00', meta:'30000', teto:'60000',
@@ -255,7 +305,13 @@ function defaultDB(){ return {
  luademel:[ck('Definir destino e datas'),ck('Definir orçamento da viagem'),ck('Reservar passagens'),ck('Reservar hospedagem'),ck('Passaporte / visto (se exterior)'),ck('Seguro viagem'),ck('Câmbio / cartão internacional'),ck('Vacinas (se necessário)')]
 }; }
 
-(function(){ var d=defaultDB(), s=load(); if(!s){ DB=d; } else { DB=s; for(var k in d){ if(!(k in DB)) DB[k]=d[k]; } if(!DB.essenciais||Array.isArray(DB.essenciais)) DB.essenciais=d.essenciais; } })();
+(function(){
+  var d=defaultDB(), s=load(), migrated=migrateDB(s||d);
+  DB=migrated.data;
+  for(var k in d){ if(!(k in DB)) DB[k]=d[k]; }
+  if(!DB.essenciais||Array.isArray(DB.essenciais)) DB.essenciais=d.essenciais;
+  if(migrated.changed){ try{ localStorage.setItem(KEY,JSON.stringify(DB)); }catch(e){ canStore=false; } }
+})();
 
 function allEss(){ var a=[]; ['kit','semana','levar','gorjetas'].forEach(function(g){ (DB.essenciais[g]||[]).forEach(function(x){a.push(x);}); }); return a; }
 function countTasks(){ var t=0,dn=0; DB.cronograma.forEach(function(f){ f.tarefas.forEach(function(x){t++;if(x.done)dn++;}); }); allEss().forEach(function(x){t++;if(x.done)dn++;}); return {t:t,dn:dn}; }
@@ -264,7 +320,7 @@ function days(){ return Math.max(0,Math.ceil((new Date(2027,4,15)-new Date())/86
 function initials(){ var a=(DB.noiva||'').trim(), b=(DB.noivo||'').trim(); var x=a?a[0].toUpperCase():'', y=b?b[0].toUpperCase():''; return (x&&y)?(x+'&'+y):(x||y||'♡'); }
 function coupleName(){ return (DB.noiva||DB.noivo)?((DB.noiva||'Noiva')+' & '+(DB.noivo||'Noivo')):'Nosso Casamento'; }
 function updateHeader(){
-  document.getElementById('top').innerHTML='<b>'+coupleName()+'</b> · 15/05/2027 · <span class="d">faltam '+days()+' dias</span>';
+  document.getElementById('top').innerHTML='<b>'+coupleName()+'</b> · 15/05/2027 · <span class="d">faltam '+days()+' dias</span><span class="sync" data-testid="sync-status">'+syncMessage+'</span>';
   setTxt('heroMono',initials()); setTxt('heroNames',coupleName());
   setTxt('heroPlace',(DB.cidade||'Goiânia/GO')+(DB.local?(' · '+DB.local):''));
   setTxt('heroDays',days());
@@ -545,7 +601,44 @@ function copyText(txt,ta){
 }
 function downloadJSON(code){ try{ var b=new Blob([code],{type:'application/json'}); var a=document.createElement('a'); a.href=URL.createObjectURL(b); a.download='casamento-15-05-2027-backup.json'; a.click(); toast('Arquivo gerado.'); }catch(e){ toast('Use "Copiar código" no celular.'); } }
 
-buildTabs(); updateHeader(); showTab('inicio');
+var syncMessage='Salvo localmente';
+var FIREBASE_CONFIG={apiKey:'AIzaSyB0rj1a7XUBlkU5fM3uCHJr3953VbvAV4k',authDomain:'casamento-gustavo-gleicianne.firebaseapp.com',projectId:'casamento-gustavo-gleicianne',databaseURL:'https://casamento-gustavo-gleicianne-default-rtdb.firebaseio.com',appId:'1:952886965649:web:8cf186cbda84a906e59630'};
+var AUTH_PROFILES={gustavo:'gustavohenriquecm@gmail.com',gleicianne:'gleicianecarvalho3@gmail.com'};
+var selectedProfile='';
+function startApp(){ document.getElementById('login').hidden=true; buildTabs(); updateHeader(); showTab('inicio'); }
+function setLoginMessage(message){ document.getElementById('login-message').textContent=message; }
+function setupLogin(){
+  document.querySelectorAll('[data-profile]').forEach(function(button){ button.onclick=function(){ selectedProfile=button.getAttribute('data-profile'); document.querySelectorAll('[data-profile]').forEach(function(item){item.classList.toggle('sel',item===button);}); setLoginMessage('Agora informe sua senha para continuar.'); document.getElementById('login-password').focus(); }; });
+  document.getElementById('login-submit').onclick=login;
+  document.getElementById('login-password').onkeydown=function(event){if(event.key==='Enter')login();};
+}
+function setSyncMessage(message){ syncMessage=message; if(!document.getElementById('login').hidden){ setLoginMessage(message); } updateHeader(); }
+function makeSyncService(db,ref,onValue,set){
+  var root=ref(db,'casamento/shared'), busy=false;
+  function outbox(){ try{return JSON.parse(localStorage.getItem(OUTBOX_KEY)||'[]');}catch(e){return [];} }
+  function store(items){ try{localStorage.setItem(OUTBOX_KEY,JSON.stringify(items));}catch(e){canStore=false;} }
+  async function flush(){ if(busy)return; var items=outbox(); if(!items.length)return; busy=true; try{ await set(root,items[items.length-1]); store([]); setSyncMessage('Sincronizado'); }catch(error){ setSyncMessage('Offline — alterações pendentes'); }finally{busy=false;} }
+  onValue(root,function(snapshot){ if(snapshot.exists()&&!outbox().length){ var migrated=migrateDB(snapshot.val()); DB=migrated.data; try{localStorage.setItem(KEY,JSON.stringify(DB));}catch(e){} showTab('inicio'); } });
+  window.addEventListener('online',flush);
+  return {queueSnapshot:function(snapshot){ var items=outbox(); items.push(snapshot); store(items.slice(-20)); flush(); },flush:flush};
+}
+async function login(){
+  if(!selectedProfile){ setLoginMessage('Escolha quem está acessando.'); return; }
+  var password=document.getElementById('login-password').value;
+  if(!password){ setLoginMessage('Informe a senha.'); return; }
+  setLoginMessage('Verificando acesso…');
+  try{
+    var appModule=await import('https://www.gstatic.com/firebasejs/12.15.0/firebase-app.js');
+    var authModule=await import('https://www.gstatic.com/firebasejs/12.15.0/firebase-auth.js');
+    var dbModule=await import('https://www.gstatic.com/firebasejs/12.15.0/firebase-database.js');
+    var app=appModule.initializeApp(FIREBASE_CONFIG), auth=authModule.getAuth(app), db=dbModule.getDatabase(app);
+    await authModule.signInWithEmailAndPassword(auth,AUTH_PROFILES[selectedProfile],password);
+    syncService=makeSyncService(db,dbModule.ref,dbModule.onValue,dbModule.set);
+    startApp(); syncService.flush();
+  }catch(error){ setLoginMessage('Não foi possível entrar. Confira o nome escolhido e a senha.'); }
+}
+setupLogin();
+if(new URLSearchParams(location.search).has('test')&&new URLSearchParams(location.search).has('authenticated')) startApp();
 </script>
 </body>
 </html>
