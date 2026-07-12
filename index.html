@@ -373,8 +373,10 @@ function renderInicio(){
   metaInput.setAttribute('data-testid','budget-meta'); tetoInput.setAttribute('data-testid','budget-teto');
   el.appendChild(h('div',{class:'card'}, h('h2',{},'💰 Orçamento'),
     h('div',{class:'grid2'}, field('Meta (R$)',metaInput), field('Teto (R$)',tetoInput)),
+    h('div',{class:'mini'},'Comprometido do teto · '+perc2+'%'),
     h('div',{class:'prog'}, h('i',{style:'width:'+perc2+'%'})),
-    h('div',{class:'mini'},'Contratado × teto: '+perc2+'%'),
+    h('div',{class:'mini'},'Pago do teto · '+(teto?Math.min(100,Math.round(pago/teto*100)):0)+'%'),
+    h('div',{class:'prog'}, h('i',{style:'width:'+(teto?Math.min(100,Math.round(pago/teto*100)):0)+'%;background:var(--ok)'})),
     h('div',{class:'kpi',style:'margin-top:10px'},
       h('div',{class:'k'}, h('div',{class:'v'},fmt(contratado)), h('div',{class:'t'},'Contratado')),
       h('div',{class:'k'}, h('div',{class:'v'},fmt(pago)), h('div',{class:'t'},'Já pago')),
