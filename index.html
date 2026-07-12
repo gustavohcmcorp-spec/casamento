@@ -459,7 +459,7 @@ function renderFornecedores(){
   el.appendChild(h('div',{class:'card'}, h('h2',{},'🤝 Fornecedores'), h('p',{class:'hint'},'Toque numa categoria para abrir. Preencha até 3 opções com valor e o que inclui, confira o "está incluso?" e defina a escolha. Se algo NÃO estiver incluso, anote onde contratar à parte.')));
   var STATUS=['','Pesquisando','Orçamento recebido','Reservado','Contratado / pago'];
   DB.categorias.forEach(function(cat){
-    var body=h('div',{class:'acc-b'});
+    var body=h('div',{class:'acc-b'+(cat.open?' open':'')});
     body.appendChild(h('h3',{},'Opções de fornecedores'));
     var ow=h('div',{}); cat.opcoes.forEach(function(o,i){ ow.appendChild(optBlock(cat,o,i)); }); body.appendChild(ow);
     body.appendChild(h('button',{class:'btn s mini addrow',onclick:function(){ cat.opcoes.push(opt()); save(); ow.appendChild(optBlock(cat,cat.opcoes[cat.opcoes.length-1],cat.opcoes.length-1)); }},'+ opção'));
@@ -471,8 +471,8 @@ function renderFornecedores(){
     ));
     body.appendChild(field('Observações', ta(cat,'obs','Anotações, condições, o que falta...')));
     if(cat.pref){ var pf=h('div',{class:'pref'},'⭐ '+cat.pref); body.insertBefore(pf, body.firstChild); }
-    var chev=h('span',{class:'chev'},'▸');
-    var head=h('button',{class:'acc-h',onclick:function(){ var op=body.classList.toggle('open'); chev.className='chev'+(op?' up':''); }},
+    var chev=h('span',{class:'chev'+(cat.open?' up':'')},'▸');
+    var head=h('button',{class:'acc-h',onclick:function(){ var op=body.classList.toggle('open'); cat.open=op; save(); chev.className='chev'+(op?' up':''); }},
       cat.nome, chip, chev);
     el.appendChild(h('div',{class:'card'}, head, body));
   });
@@ -484,7 +484,7 @@ function optBlock(cat,o,i){
   var maps=h('a',{class:'btn s mini',target:'_blank',href:'https://www.google.com/maps/search/?api=1&query='+encodeURIComponent(o.visitaEndereco||''),'aria-label':'Abrir no Google Maps'},'Abrir no Google Maps');
   var visit=h('details',{},h('summary',{},'Visita ao fornecedor'),h('div',{class:'grid2'},field('Data',tf(o,'visitaData','', 'date')),field('Horário',tf(o,'visitaHora','', 'time'))),field('Endereço',tf(o,'visitaEndereco','Endereço da visita', 'text',function(){maps.href='https://www.google.com/maps/search/?api=1&query='+encodeURIComponent(o.visitaEndereco||'');})),maps);
   return h('div',{class:'opt'},
-    h('div',{class:'oh'}, 'Opção '+(i+1)+(cat.opcaoEscolhida===i?' · ✓ Escolhida':''), h('div',{style:'display:flex;gap:5px'},h('button',{class:'btn s mini',onclick:function(){chooseSupplierOption(cat,o,i);}},cat.opcaoEscolhida===i?'✓ Escolhido':'Escolher esta opção'),h('button',{class:'btn del mini',onclick:function(){ if(cat.opcoes.length<=1)return; cat.opcoes.splice(i,1); save(); renderFornecedores(); }},'remover'))),
+    h('div',{class:'oh'}, 'Opção '+(i+1)+(cat.opcaoEscolhida===i?' · ✓ Escolhida':''), h('div',{style:'display:flex;gap:5px'},h('button',{class:'btn s mini',onclick:function(){cat.opcaoEscolhida===i?unchooseSupplierOption(cat):chooseSupplierOption(cat,o,i);}},cat.opcaoEscolhida===i?'Desfazer escolha':'Escolher esta opção'),h('button',{class:'btn del mini',onclick:function(){ if(cat.opcoes.length<=1)return; cat.opcoes.splice(i,1); save(); renderFornecedores(); }},'remover'))),
     h('div',{class:'grid2'}, field('Fornecedor',tf(o,'nome','Nome')), field('Contato',tf(o,'contato','Tel / @ / site'))),
     h('div',{class:'grid2'},field('Cobrança',sel(o,'tipoCobranca',['fechado','porPessoa'],function(){save();renderFornecedores();})),field(o.tipoCobranca==='porPessoa'?'Valor por pessoa':'Valor (R$)',moneyInput(o,o.tipoCobranca==='porPessoa'?'valorUnitario':'valor','0'))),
     o.tipoCobranca==='porPessoa'?h('p',{class:'hint'},'Estimativa: '+formatMoney(pn(o.valorUnitario)*pn(DB.convidadosPrevistos))+' para '+(DB.convidadosPrevistos||0)+' convidados'):null,
@@ -497,8 +497,9 @@ function chooseSupplierOption(cat,o,index){
   var p=DB.pagamentos.find(function(item){return (item.forn||'').toLowerCase().indexOf(key)>=0;});
   if(!p){p=ensurePayment({forn:label,total:''});DB.pagamentos.push(p);} else Object.assign(p,ensurePayment(p));
   p.forn=o.nome||label; p.total=o.valor||p.total; p.tipoCobranca=o.tipoCobranca||'fechado'; p.valorUnitario=o.valorUnitario||p.valorUnitario;
-  cat.opcaoEscolhida=index; cat.decisao=p.forn; cat.status='Reservado'; save(); renderFornecedores(); toast('Opção enviada para Pagamentos.');
+  cat.opcaoEscolhida=index; cat.decisao=p.forn; cat.status='Reservado'; cat.open=true; save(); renderFornecedores(); toast('Opção enviada para Pagamentos.');
 }
+function unchooseSupplierOption(cat){ delete cat.opcaoEscolhida; delete cat.decisao; if(cat.status==='Reservado')cat.status='Orçamento recebido'; cat.open=true; save();renderFornecedores();toast('Escolha desfeita; os dados foram mantidos.'); }
 function statusClass(s){ if(s==='Contratado / pago'||s==='Reservado')return 'g'; if(s==='Orçamento recebido')return 'y'; return 'n'; }
 
 function renderEquipe(){
