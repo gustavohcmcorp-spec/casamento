@@ -179,7 +179,7 @@ function load(){ try{ var s=localStorage.getItem(KEY); if(s)return JSON.parse(s)
 
 function tf(o,k,ph,type,afterInput){ var e=h('input',{class:'f',type:type||'text',placeholder:ph||'',oninput:function(){o[k]=e.value;saveD();if(afterInput)afterInput();}}); e.value=o[k]==null?'':o[k]; return e; }
 function moneyInput(o,k,ph,afterInput){ var e=h('input',{class:'f',type:'text',inputmode:'decimal',placeholder:ph||'',oninput:function(){o[k]=e.value;saveD();if(afterInput)afterInput();},onblur:function(){ if(e.value!==''){ e.value=formatMoney(e.value); o[k]=e.value; save(); if(afterInput)afterInput(); } }}); e.value=o[k]?formatMoney(o[k]):''; return e; }
-function ensurePayment(p){ return Object.assign({tipoCobranca:'fechado',valorUnitario:'',entradaTipo:'valor',entradaValor:'',entradaStatus:'Pendente',entradaDataPagamento:'',parcelasQtd:'',primeiroVencimento:'',parcelasDetalhes:[],pixDescontoPercentual:'',modalidadeEscolhida:'parcelado'},p||{}); }
+function ensurePayment(p){ var payment=Object.assign({tipoCobranca:'fechado',valorUnitario:'',entradaTipo:'valor',entradaValor:'',entradaStatus:'Pendente',entradaDataPagamento:'',parcelasQtd:'',primeiroVencimento:'',parcelasDetalhes:[],pixDescontoPercentual:'',modalidadeEscolhida:'parcelado'},p||{}); if(!payment.id)payment.id=makeId('pag'); return payment; }
 function paymentTotal(p){ p=ensurePayment(p); return p.tipoCobranca==='porPessoa'?pn(p.valorUnitario)*pn(DB.convidadosPrevistos):pn(p.total); }
 function paymentEntry(p){ var total=paymentTotal(p); return p.entradaTipo==='percentual'?total*pn(p.entradaValor)/100:pn(p.entradaValor||p.entrada); }
 function paymentPix(p){ return paymentTotal(p)*(1-pn(p.pixDescontoPercentual)/100); }
@@ -253,7 +253,7 @@ function defaultDB(){ return {
  __v:2, noiva:'', noivo:'', local:'', cidade:'Goiânia/GO', hora:'16:00', meta:'30000', teto:'60000', convidadosPrevistos:'60',
  categorias:[
   CAT('1. Espaço de eventos (local)','',['Cadeiras','Mesas','Toalhas / mesa posta','Talheres','Louças / pratos','Taças e copos','Cozinha equipada','Gerador / energia extra','Climatização (ar / ventilação)','Banheiros (qtde e higienização)','Estacionamento','Segurança do espaço','Limpeza pós-evento','Espaço para a cerimônia','Espaço para a festa','Suíte / sala dos noivos','Permite buffet externo?','Horário-limite de som / término','Taxa de rolha (bebida própria)','Seguro / caução','Acesso e horário para montagem']),
-  CAT('2. Buffet / comida','Preferência dos noivos: churrasco parrilla — costela fogo de chão, entradas de frios e massa (macarrão). Peça também 2–3 opções alternativas de cardápio para comparar.',['Couvert / entradas','Estação de frios','Prato principal (parrilla)','Costela fogo de chão','Acompanhamentos / guarnições','Massa / macarrão','Saladas','Sobremesa','Louças e talheres do buffet','Garçons e maître inclusos?','Nº de garçons','Prova / degustação','Refeição dos fornecedores','Reposição à vontade?','Comida da madrugada (bem-casado / lanche)','Taxa de serviço (10%)']),
+  CAT('2. Buffet / comida','',['Couvert / entradas','Estação de frios','Prato principal','Acompanhamentos / guarnições','Massa / macarrão','Saladas','Sobremesa','Louças e talheres do buffet','Garçons e maître inclusos?','Nº de garçons','Prova / degustação','Refeição dos fornecedores','Reposição à vontade?','Comida da madrugada (bem-casado / lanche)','Taxa de serviço (10%)']),
   CAT('3. Bebidas / bar','',['Água','Refrigerante','Suco','Cerveja','Vinho','Espumante (brinde)','Destilados / drinks','Barman / bartender','Gelo e copos','Welcome drink','Open bar até que horas?']),
   CAT('4. Bolo e doces','',['Bolo (andares e sabor)','Docinhos (qtde por cento)','Bem-casados','Naked cake / cenográfico','Topo de bolo','Mesa / suporte do bolo','Entrega e montagem']),
   CAT('5. DJ / música','',['Equipamento de som próprio','Horas de festa contratadas','Iluminação de pista inclusa','Microfone p/ cerimônia','Som p/ cerimônia','Playlist personalizada','Reunião prévia','Equipamento reserva (backup)','Música ao vivo (voz / violão)?']),
@@ -277,7 +277,7 @@ function defaultDB(){ return {
  ],
  cronograma:[
   {fase:'12+ meses antes (até mai/2026)',tarefas:[ck('Definir estilo, nº de convidados (~60) e orçamento (meta R$30 mil / teto R$60 mil)'),ck('Montar lista preliminar de convidados'),ck('Contratar a assessoria / cerimonial e alinhar expectativas'),ck('Visitar e reservar o espaço de eventos (contrato + sinal)'),ck('Confirmar a data com o espaço: 15/05/2027 (sábado)')]},
-  {fase:'10 a 12 meses (jun–ago/2026)',tarefas:[ck('Fechar o buffet com degustação e contrato (parrilla + costela fogo de chão)'),ck('Contratar fotografia e vídeo'),ck('Definir padrinhos e madrinhas'),ck('Reservar DJ / música')]},
+  {fase:'10 a 12 meses (jun–ago/2026)',tarefas:[ck('Fechar buffet, degustação e contrato'),ck('Contratar fotografia e vídeo'),ck('Definir padrinhos e madrinhas'),ck('Reservar DJ / música')]},
   {fase:'8 a 10 meses (set–out/2026)',tarefas:[ck('Contratar decoração e flores'),ck('Escolher vestido da noiva e traje do noivo (iniciar)'),ck('Definir identidade visual / design dos convites'),ck('Contratar celebrante (civil / religioso)')]},
   {fase:'6 a 8 meses (nov–dez/2026)',tarefas:[ck('Degustar e fechar bolo e doces'),ck('Fechar bebidas / bar'),ck('Fazer teste de beleza (cabelo e maquiagem)'),ck('Pesquisar e reservar a lua de mel')]},
   {fase:'4 a 6 meses (jan–fev/2027)',tarefas:[ck('Enviar save the date / convites'),ck('Fechar pista de dança, som e iluminação'),ck('Fechar carpete / passadeira e itens da entrada'),ck('Definir hospedagem para convidados de fora'),ck('Contratar cabine de fotos / totem 360')]},
@@ -324,6 +324,8 @@ function defaultDB(){ return {
  ],
  pagamentos:['Espaço','Buffet','Bebidas / bar','Bolo e doces','DJ / música','Som e iluminação','Pista de dança','Flores','Decoração','Carpete / entrada','Fotografia','Vídeo','Cabine 360','Celebrante','Convites / papelaria','Beleza','Traje da noiva','Traje do noivo','Alianças','Assessoria / cerimonial','Transporte','Lembrancinhas','Hospedagem'].map(function(f){return {forn:f,total:'',entrada:'',parc:'',venc:'',pago:''};}),
  convidados:[{nome:'',grupo:'',ad:'',cr:'',conf:'Pendente',mesa:'',obs:''},{nome:'',grupo:'',ad:'',cr:'',conf:'Pendente',mesa:'',obs:''}],
+ mensagens:{convite:'Olá, {{nome}}! 💍\n\nEstamos muito felizes em convidar você para o nosso casamento.\n\nData: {{data}}\nLocal: {{local}}\n{{mapa}}\n\nPedimos, por gentileza, que confirme sua presença{{prazo_rsvp}}. Esperamos você!',lembrete:'Olá, {{nome}}! 💍\n\nPassando para lembrar da confirmação de presença para o nosso casamento{{prazo_rsvp}}.\n\nData: {{data}}\nLocal: {{local}}\n{{mapa}}\n\nObrigado!'},
+ preferenciasNoivos:{buffet:'Churrasco parrilla, costela fogo de chão, entradas de frios e massa (macarrão). Avaliar outras opções conforme o orçamento.'},
  essenciais:{
   kit:[ck('Costura: agulha, linhas (branca/preta), alfinetes, botões extras, fita dupla-face de tecido'),ck('Tesourinha e alfinete de segurança'),ck('Retoque: batom/gloss, pó compacto, grampos e presilhas, elástico de cabelo, spray fixador, esmalte transparente'),ck('Saúde: analgésico, antiácido, anti-inflamatório, band-aid, colírio, absorvente, remédio de uso pessoal'),ck('Praticidades: bala de menta, mini desodorante, lenços, cotonete, protetor de bolha, canudo (beber sem borrar o batom)'),ck('Power bank + cabo de celular'),ck('Guarda-chuva / capa (mesmo em maio)')],
   semana:[ck('Reconfirmar horários com todos os fornecedores'),ck('Última prova de traje / vestido'),ck('Cabelo, unhas e depilação'),ck('Test drive do trajeto até o local'),ck('Montar envelopes de pagamento e gorjetas'),ck('Carregar celulares e power bank'),ck('Separar documentos, alianças e votos'),ck('Arrumar a mala da lua de mel'),ck('Descansar, hidratar e dormir bem na véspera')],
@@ -342,6 +344,7 @@ function defaultDB(){ return {
   DB.pagamentos=(DB.pagamentos||[]).map(ensurePayment);
   DB.convidados=(DB.convidados||[]).map(function(g){return Object.assign({convite:'Não enviado'},g);});
   if(!DB.essenciais||Array.isArray(DB.essenciais)) DB.essenciais=d.essenciais;
+  if(DB.categorias&&DB.categorias[1]&&DB.categorias[1].pref){ if(!DB.preferenciasNoivos||DB.preferenciasNoivos.buffet===d.preferenciasNoivos.buffet)DB.preferenciasNoivos={buffet:DB.categorias[1].pref.replace(/^Preferência dos noivos:\s*/, '')}; DB.categorias[1].pref=''; }
   if(migrated.changed){ try{ localStorage.setItem(KEY,JSON.stringify(DB)); }catch(e){ canStore=false; } }
 })();
 
@@ -515,13 +518,13 @@ function optBlock(cat,o,i){
   );
 }
 function chooseSupplierOption(cat,o,index){
-  var label=cat.nome.replace(/^\d+\.\s*/,'').replace(/\s*\(.*/,''), key=label.toLowerCase().split(' ')[0];
-  var p=DB.pagamentos.find(function(item){return (item.forn||'').toLowerCase().indexOf(key)>=0;});
+  var label=cat.nome.replace(/^\d+\.\s*/,'').replace(/\s*\(.*/,''), key=label.toLowerCase().split(' ')[0], link='categoria:'+cat.nome;
+  var p=DB.pagamentos.find(function(item){return item.vinculoFornecedor===link||(item.forn||'').toLowerCase().indexOf(key)>=0;});
   if(!p){p=ensurePayment({forn:label,total:''});DB.pagamentos.push(p);} else Object.assign(p,ensurePayment(p));
-  p.forn=o.nome||label; p.total=o.valor||p.total; p.tipoCobranca=o.tipoCobranca||'fechado'; p.valorUnitario=o.valorUnitario||p.valorUnitario; o.pagamentoId=p.id;
+  p.forn=o.nome||label; p.total=o.valor||p.total; p.tipoCobranca=o.tipoCobranca||'fechado'; p.valorUnitario=o.valorUnitario||p.valorUnitario; p.vinculoFornecedor=link; o.pagamentoId=p.id; o.pagamentoVinculo=link;
   cat.opcaoEscolhida=index; cat.decisao=p.forn; cat.status='Reservado'; cat.open=true; save(); renderFornecedores(); toast('Opção enviada para Pagamentos.');
 }
-function unchooseSupplierOption(cat){ var option=cat.opcoes[cat.opcaoEscolhida]; if(option&&option.pagamentoId)DB.pagamentos=DB.pagamentos.filter(function(payment){return payment.id!==option.pagamentoId;}); if(option)delete option.pagamentoId; delete cat.opcaoEscolhida; delete cat.decisao; if(cat.status==='Reservado')cat.status='Orçamento recebido'; cat.open=true; save();renderFornecedores();toast('Escolha e pagamento vinculado removidos.'); }
+function unchooseSupplierOption(cat){ var option=cat.opcoes[cat.opcaoEscolhida], link=(option&&option.pagamentoVinculo)||('categoria:'+cat.nome), names=[option&&option.nome,cat.decisao].filter(Boolean).map(function(name){return name.trim().toLowerCase();}); DB.pagamentos=DB.pagamentos.filter(function(payment){var paymentName=(payment.forn||'').trim().toLowerCase();return payment.id!==((option&&option.pagamentoId)||'')&&payment.vinculoFornecedor!==link&&names.indexOf(paymentName)<0;}); if(option){delete option.pagamentoId;delete option.pagamentoVinculo;} delete cat.opcaoEscolhida; delete cat.decisao; if(cat.status==='Reservado')cat.status='Orçamento recebido'; cat.open=true; save();renderFornecedores();toast('Escolha e pagamento vinculado removidos.'); }
 function downloadVisitEvent(o){
   if(!o.visitaData||!o.visitaHora){toast('Informe data e horário da visita.');return;}
   var start=o.visitaData.replace(/-/g,'')+'T'+o.visitaHora.replace(':','')+'00';
@@ -602,54 +605,61 @@ function renderPagamentos(){
   el.appendChild(card);
 }
 
+function guestMessageTemplates(){ var defaults=defaultDB().mensagens; DB.mensagens=Object.assign({},defaults,DB.mensagens||{}); return DB.mensagens; }
+function resolveGuestMessage(template,g){ var place=[DB.local,DB.cidade].filter(Boolean).join(' — '), deadline=DB.prazoRSVP?(' até '+new Date(DB.prazoRSVP+'T12:00:00').toLocaleDateString('pt-BR')):'', values={nome:g.nome||'querido(a) convidado(a)',data:'15/05/2027'+(DB.hora?(' às '+DB.hora):''),hora:DB.hora||'',local:place||'a definir',mapa:DB.local?('Mapa: https://www.google.com/maps/search/?api=1&query='+encodeURIComponent(place)):'',prazo_rsvp:deadline}; return (template||'').replace(/\{\{(nome|data|hora|local|mapa|prazo_rsvp)\}\}/g,function(_,key){return values[key];}).replace(/\n{3,}/g,'\n\n').trim(); }
 function prepareWhatsAppInvite(g,reminder){
   var phone=(g.telefone||'').replace(/\D/g,'');
   if(!phone){toast('Informe o WhatsApp do convidado antes de preparar o convite.');return;}
-  var name=g.nome||'querido(a) convidado(a)';
-  var deadline=DB.prazoRSVP?(' até '+new Date(DB.prazoRSVP+'T12:00:00').toLocaleDateString('pt-BR')):'';
-  var eventInfo='15/05/2027'+(DB.hora?(' às '+DB.hora):'');
-  var place=[DB.local,DB.cidade].filter(Boolean).join(' — '),mapLink=DB.local?('\nMapa: https://www.google.com/maps/search/?api=1&query='+encodeURIComponent(place)):'';
-  var details='\n\nData: '+eventInfo+(place?('\nLocal: '+place):'')+mapLink;
-  var text=reminder?('Olá, '+name+'! 💍\n\nPassando para lembrar da confirmação de presença para o nosso casamento'+deadline+'.'+details+'\n\nObrigado!'):('Olá, '+name+'! 💍\n\nEstamos muito felizes em convidar você para o nosso casamento.'+details+'\n\nPedimos, por gentileza, que confirme sua presença'+deadline+'. Esperamos você!');
+  var templates=guestMessageTemplates(), text=resolveGuestMessage(reminder?templates.lembrete:templates.convite,g);
   g.convite=reminder?'Lembrete enviado':'Preparado no WhatsApp'; if(reminder)g.lembreteEnvio=new Date().toISOString().slice(0,10); else g.primeiroEnvio=g.primeiroEnvio||new Date().toISOString().slice(0,10); save();
   window.open('https://wa.me/'+phone+'?text='+encodeURIComponent(text),'_blank');
 }
 
+function guestCounts(g){ var adults=pn(g.ad),children=pn(g.cr); if(!adults&&!children)adults=1; return {adults:adults,children:children,total:adults+children}; }
+function ensureGuestPeople(g){ var counts=guestCounts(g), current=g.pessoas||[], desired=[],index=0; for(var a=0;a<counts.adults;a++){var adult=current.filter(function(person){return person.tipo==='Adulto';})[a]||{}; desired.push({tipo:'Adulto',nome:adult.nome||(index===0?g.nome:'')});index++;} for(var c=0;c<counts.children;c++){var child=current.filter(function(person){return person.tipo==='Criança';})[c]||{}; desired.push({tipo:'Criança',nome:child.nome||''});} g.pessoas=desired; return desired; }
+function guestCountCell(g,key){ var td=h('td',{class:'num'}),input=h('input',{type:'text',inputmode:'numeric',oninput:function(){g[key]=input.value;saveD();},onblur:function(){ensureGuestPeople(g);save();renderConvidados();}}); input.value=g[key]||'';td.appendChild(input);return td; }
+function guestPeopleCell(g){ var people=ensureGuestPeople(g), details=h('details',{},h('summary',{},'Pessoas convidadas · '+people.length)); people.forEach(function(person,index){var input=h('input',{class:'cn',placeholder:person.tipo+' '+(index+1),oninput:function(){person.nome=input.value;saveD();}});input.value=person.nome||'';details.appendChild(h('div',{class:'field'},h('label',{class:'fl'},person.tipo+' '+(people.filter(function(p){return p.tipo===person.tipo;}).indexOf(person)+1)),input));}); var note=h('input',{class:'cn',placeholder:'Observação da família',oninput:function(){g.obs=note.value;saveD();}});note.value=g.obs||'';details.appendChild(note);return h('td',{},details); }
+
 function renderConvidados(){
   var el=q('convidados'); el.innerHTML='';
-  var total=0,conf=0,pend=0,enviados=0;
-  DB.convidados.forEach(function(g){ var p=(pn(g.ad)+pn(g.cr))||1; total+=p; if(g.conf==='Confirmado')conf+=p; if(g.conf==='Pendente')pend++; if(g.convite==='Enviado'||g.convite==='Lembrete enviado')enviados+=p; });
+  var total=0,adults=0,children=0,conf=0,pend=0,enviados=0,templates=guestMessageTemplates();
+  DB.convidados.forEach(function(g){ var count=guestCounts(g),p=count.total; total+=p;adults+=count.adults;children+=count.children; if(g.conf==='Confirmado')conf+=p; if(g.conf==='Pendente')pend++; if(g.convite==='Enviado'||g.convite==='Lembrete enviado')enviados+=p; });
   var planned=tf(DB,'convidadosPrevistos','60','text',updateBudgetSummaryText); planned.setAttribute('data-testid','guests-planned');
   var rsvpDeadline=tf(DB,'prazoRSVP','', 'date');
   var card=h('div',{class:'card'}, h('h2',{},'📋 Convidados & RSVP'),
     h('div',{class:'grid2'},field('Convidados previstos',planned),field('Prazo para RSVP',rsvpDeadline)),
     h('div',{class:'kpi',style:'margin:6px 0 10px'},
-      h('div',{class:'k'}, h('div',{class:'v'},total), h('div',{class:'t'},'na lista')),
+      h('div',{class:'k','data-testid':'guest-total'}, h('div',{class:'v'},total), h('div',{class:'t'},'na lista')),
+      h('div',{class:'k','data-testid':'guest-adults'}, h('div',{class:'v'},adults), h('div',{class:'t'},'adultos')),
+      h('div',{class:'k','data-testid':'guest-children'}, h('div',{class:'v'},children), h('div',{class:'t'},'crianças')),
       h('div',{class:'k'}, h('div',{class:'v'},enviados), h('div',{class:'t'},'convites enviados')),
       h('div',{class:'k'}, h('div',{class:'v'},conf), h('div',{class:'t'},'confirmadas')),
       h('div',{class:'k'}, h('div',{class:'v'},DB.convidadosPrevistos||'0'), h('div',{class:'t'},'previstos')),
       h('div',{class:'k'}, h('div',{class:'v'},pend), h('div',{class:'t'},'pendentes'))
     ),
-    h('p',{class:'hint'},'Ad = adultos, Cr = crianças. Marque a confirmação e a mesa.'),
+    h('p',{class:'hint'},'Ad = adultos, Cr = crianças. Preencha os nomes de acompanhantes em “Pessoas convidadas”.'),
     h('div',{'data-testid':'rsvp-progress'},h('div',{class:'mini'},conf+' de '+(DB.convidadosPrevistos||0)+' confirmações · '+(pn(DB.convidadosPrevistos)?Math.min(100,Math.round(conf/pn(DB.convidadosPrevistos)*100)):0)+'%'),h('div',{class:'prog'},h('i',{style:'width:'+(pn(DB.convidadosPrevistos)?Math.min(100,Math.round(conf/pn(DB.convidadosPrevistos)*100)):0)+'%'}))));
+  var messageSettings=h('details',{},h('summary',{},'Personalizar mensagens do WhatsApp'),h('p',{class:'hint'},'Os textos servem para todos. Preserve {{nome}} para inserir cada convidado; também há {{data}}, {{hora}}, {{local}}, {{mapa}} e {{prazo_rsvp}}.'),field('Mensagem de convite',ta(templates,'convite','Mensagem do convite')),field('Mensagem de lembrete',ta(templates,'lembrete','Mensagem de lembrete'))); card.appendChild(messageSettings);
   var tb=h('tbody',{});
   DB.convidados.forEach(function(g,i){
-    var tr=h('tr',{}, tdIn(g,'nome'), tdIn(g,'grupo'), tdIn(g,'ad','num'), tdIn(g,'cr','num'),
+    var tr=h('tr',{}, tdIn(g,'nome'), tdIn(g,'grupo'), guestCountCell(g,'ad'), guestCountCell(g,'cr'),
       tdIn(g,'telefone'),
       h('td',{}, sel(g,'convite',['Não enviado','Preparado no WhatsApp','Enviado','Lembrete enviado'],function(){renderConvidados();})),
       h('td',{}, sel(g,'conf',['Pendente','Confirmado','Não vai'],function(){renderConvidados();})),
-      tdIn(g,'mesa'), tdIn(g,'obs'),
+      tdIn(g,'mesa'), guestPeopleCell(g),
       h('td',{}, h('button',{class:'btn s mini',onclick:function(){prepareWhatsAppInvite(g);}},'Preparar WhatsApp'),g.conf==='Pendente'?h('button',{class:'btn mini',style:'margin-top:4px',onclick:function(){prepareWhatsAppInvite(g,true);}},'Lembrete RSVP'):null),
       h('td',{}, h('button',{class:'btn del mini',onclick:function(){DB.convidados.splice(i,1);save();renderConvidados();}},'×')));
     tb.appendChild(tr);
   });
-  card.appendChild(h('div',{class:'twrap'}, h('table',{style:'min-width:900px'}, h('thead',{}, h('tr',{}, th('Nome / família'),th('Grupo'),th('Ad'),th('Cr'),th('WhatsApp'),th('Convite'),th('Confirmação'),th('Mesa'),th('Contato / obs'),th(''),th(''))), tb)));
+  card.appendChild(h('div',{class:'twrap'}, h('table',{style:'min-width:900px'}, h('thead',{}, h('tr',{}, th('Nome / família'),th('Grupo'),th('Ad'),th('Cr'),th('WhatsApp'),th('Convite'),th('Confirmação'),th('Mesa'),th('Pessoas convidadas'),th(''),th(''))), tb)));
   card.appendChild(h('button',{class:'btn p mini addrow',onclick:function(){ DB.convidados.push({nome:'',grupo:'',ad:'',cr:'',convite:'Não enviado',conf:'Pendente',mesa:'',obs:''}); save(); renderConvidados(); }},'+ convidado'));
   el.appendChild(card);
 }
 
 function renderNoivos(){
   var el=q('noivos'); el.innerHTML='';
+  var preferences=h('details',{},h('summary',{},'Preferências dos noivos'),h('p',{class:'hint'},'Referências do casal para orientar a cerimonial e os fornecedores. Não são obrigações: adequem ao orçamento e às opções encontradas.'),field('Buffet / cardápio',ta(DB.preferenciasNoivos,'buffet','Preferências de buffet e cardápio')));
+  el.appendChild(h('div',{class:'card'},h('h2',{},'💬 Preferências do casal'),preferences));
   el.appendChild(h('div',{class:'card'}, h('h2',{},'📄 Documentação — habilitação'),
     h('p',{class:'hint'},'Prazos variam por cartório. Dê entrada com antecedência (recomendável ~90 a 60 dias antes). Confirme documentos e datas no cartório de registro civil de Goiânia.'),
     checklist(DB.docs)));
