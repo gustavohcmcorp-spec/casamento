@@ -408,11 +408,20 @@ function renderInicio(){
   if(pendingSuppliers)preventive.push(pendingSuppliers+' fornecedores ainda não foram escolhidos.');
   var rsvpConfirmed=(DB.convidados||[]).reduce(function(sum,g){return sum+(g.conf==='Confirmado'?((pn(g.ad)+pn(g.cr))||1):0);},0);
   if(pn(DB.convidadosPrevistos)&&rsvpConfirmed<pn(DB.convidadosPrevistos))preventive.push('RSVP ainda incompleto: '+rsvpConfirmed+' de '+DB.convidadosPrevistos+' confirmações.');
+  var invitesNotSent=(DB.convidados||[]).filter(function(g){return g.nome&&(!g.convite||g.convite==='Não enviado');}).length;
+  var invitesPrepared=(DB.convidados||[]).filter(function(g){return g.nome&&g.convite==='Preparado no WhatsApp';}).length;
+  if(invitesNotSent)preventive.push(invitesNotSent+' convites ainda não foram enviados.');
+  if(invitesPrepared)preventive.push(invitesPrepared+' convites foram preparados, mas ainda não marcados como enviados.');
   var scopePending=0; (DB.categorias||[]).forEach(function(cat){ if(cat.opcaoEscolhida!==undefined&&cat.opcoes[cat.opcaoEscolhida])scopePending+=(cat.opcoes[cat.opcaoEscolhida].itens||[]).filter(function(item){return item.inc!==''&&item.inc!=='Sim'&&item.inc!=='N/A';}).length; });
   if(scopePending)preventive.push(scopePending+' itens não inclusos em fornecedores escolhidos precisam de solução.');
   var contractPending=(DB.categorias||[]).filter(function(cat){var o=cat.opcoes&&cat.opcoes[cat.opcaoEscolhida];return !cat.naoTera&&o&&o.contratoStatus!=='Assinado';}).length;
   if(contractPending)preventive.push(contractPending+' fornecedores escolhidos ainda não têm contrato confirmado.');
+  var criticalPending=0;(DB.categorias||[]).forEach(function(cat){var o=cat.opcoes&&cat.opcoes[cat.opcaoEscolhida];if(!cat.naoTera&&o)criticalPending+=(o.contratoPontos||[]).filter(function(point){return point.status!=='Conferido'&&point.status!=='N/A';}).length;});
+  if(criticalPending)preventive.push(criticalPending+' pontos críticos de contratos ainda precisam ser conferidos.');
   if(DB.prazoRSVP&&pn(DB.convidadosPrevistos)>rsvpConfirmed){var diff=Math.ceil((new Date(DB.prazoRSVP+'T12:00:00')-new Date())/86400000);if(diff<=14)preventive.push('Prazo de RSVP próximo: faltam '+Math.max(0,diff)+' dias.');}
+  var overdueTasks=0,upcomingTasks=0,now=new Date();(DB.cronograma||[]).forEach(function(phase){(phase.tarefas||[]).forEach(function(task){if(task.done||!task.prazo)return;var due=new Date(task.prazo+'T23:59:59');if(isNaN(due.getTime()))return;var days=Math.ceil((due-now)/86400000);if(days<0)overdueTasks++;else if(days<=14)upcomingTasks++;});});
+  if(overdueTasks)preventive.push(overdueTasks+' tarefas vencidas precisam de atenção.');
+  if(upcomingTasks)preventive.push(upcomingTasks+' tarefas vencem nos próximos 14 dias.');
   if(preventive.length)el.appendChild(h('div',{class:'card','data-testid':'preventive-alerts'},h('h2',{},'⚠️ Atenção preventiva'),preventive.map(function(item){return h('p',{class:'hint'},'• '+item);}))); 
   var nextCard=nextPaymentCard('next-payment'); if(nextCard)el.appendChild(nextCard);
   var chosenSuppliers=(DB.categorias||[]).filter(function(cat){return !cat.naoTera&&cat.opcaoEscolhida!==undefined&&cat.opcaoEscolhida!==null;}).length;
@@ -453,7 +462,7 @@ function renderCronograma(){
 function taskRow(tk){
   var row=h('div',{class:'ck'+(tk.done?' done':'')});
   row.appendChild(cb(tk,'done',function(){ row.className='ck'+(tk.done?' done':''); }));
-  var m1=h('input',{class:'cn',placeholder:'Prazo',style:'max-width:46%;display:inline-block',oninput:function(){tk.prazo=m1.value;saveD();}}); m1.value=tk.prazo||'';
+  var m1=h('input',{class:'cn',type:'date',placeholder:'Prazo',style:'max-width:46%;display:inline-block',oninput:function(){tk.prazo=m1.value;saveD();}}); m1.value=tk.prazo||'';
   var m2=h('input',{class:'cn',placeholder:'Responsável',style:'max-width:46%;display:inline-block;margin-left:6px',oninput:function(){tk.resp=m2.value;saveD();}}); m2.value=tk.resp||'';
   row.appendChild(h('div',{class:'cx'}, h('div',{class:'ct'},tk.t), h('div',{},m1,m2)));
   return row;
@@ -490,13 +499,18 @@ function optBlock(cat,o,i){
   var maps=h('a',{class:'btn s mini',target:'_blank',href:'https://www.google.com/maps/search/?api=1&query='+encodeURIComponent(o.visitaEndereco||''),'aria-label':'Abrir no Google Maps'},'Abrir no Google Maps');
   var visit=h('details',{},h('summary',{},'Visita ao fornecedor'),h('div',{class:'grid2'},field('Data',tf(o,'visitaData','', 'date')),field('Horário',tf(o,'visitaHora','', 'time'))),field('Endereço',tf(o,'visitaEndereco','Endereço da visita', 'text',function(){maps.href='https://www.google.com/maps/search/?api=1&query='+encodeURIComponent(o.visitaEndereco||'');})),field('Observações',ta(o,'visitaObs','Pontos para conferir')),h('div',{style:'display:flex;gap:6px;flex-wrap:wrap;margin-top:7px'},maps,h('button',{class:'btn mini',onclick:function(){downloadVisitEvent(o);}},'Adicionar à agenda')));
   var contract=h('details',{},h('summary',{},'Contrato'),field('Situação',sel(o,'contratoStatus',['Não existe','Em andamento','Assinado'])),h('div',{class:'grid2'},field('Data da assinatura',tf(o,'contratoData','', 'date')),field('Nº / referência',tf(o,'contratoNumero','Número do contrato'))),field('Link / arquivo do contrato',tf(o,'contratoLink','Será preenchido após upload')),field('Observações do contrato',ta(o,'contratoObs','Sinal, cláusulas, multa, prazo de entrega')));
+  var criticalLabels=['Taxas adicionais, impostos e deslocamento','Valor e regra de hora extra','Cancelamento, reembolso e adiamento','Força maior e mudança de data','Substituição ou plano B do fornecedor','Prazos e formato das entregas','Seguro / responsabilidade, quando aplicável','Alimentação e pausa da equipe'];
+  if(!o.contratoPontos)o.contratoPontos=criticalLabels.map(function(label){return {label:label,status:'',obs:''};});
+  var criticalPending=o.contratoPontos.filter(function(point){return point.status!== 'Conferido'&&point.status!=='N/A';}).length;
+  var critical=h('details',{},h('summary',{},'Pontos críticos do contrato · '+criticalPending+' pendentes'));
+  o.contratoPontos.forEach(function(point){var note=h('input',{class:'cn obs',placeholder:'Valor, cláusula ou observação',oninput:function(){point.obs=note.value;saveD();}});note.value=point.obs||'';critical.appendChild(h('div',{class:'inc'},h('div',{class:'lbl'},point.label),sel(point,'status',['','Conferido','N/A'],function(){cat.open=true;save();renderFornecedores();}),note));});
   return h('div',{class:'opt'},
     h('div',{class:'oh'}, 'Opção '+(i+1)+(cat.opcaoEscolhida===i?' · ✓ Escolhida':''), h('div',{style:'display:flex;gap:5px'},h('button',{class:'btn s mini',onclick:function(){cat.opcaoEscolhida===i?unchooseSupplierOption(cat):chooseSupplierOption(cat,o,i);}},cat.opcaoEscolhida===i?'Desfazer escolha':'Escolher esta opção'),h('button',{class:'btn del mini',onclick:function(){ if(cat.opcoes.length<=1)return; cat.opcoes.splice(i,1); save(); renderFornecedores(); }},'remover'))),
     h('div',{class:'grid2'}, field('Fornecedor',tf(o,'nome','Nome')), field('Contato',tf(o,'contato','Tel / @ / site'))),
     h('div',{class:'grid2'},field('Cobrança',sel(o,'tipoCobranca',['fechado','porPessoa'],function(){save();renderFornecedores();})),field(o.tipoCobranca==='porPessoa'?'Valor por pessoa':'Valor (R$)',moneyInput(o,o.tipoCobranca==='porPessoa'?'valorUnitario':'valor','0'))),
     o.tipoCobranca==='porPessoa'?h('p',{class:'hint'},'Estimativa: '+formatMoney(pn(o.valorUnitario)*pn(DB.convidadosPrevistos))+' para '+(DB.convidadosPrevistos||0)+' convidados'):null,
     field('Complementos do que inclui', ta(o,'inclui','Adicione algo que não esteja no checklist')),
-    includedSummary,included,visit,contract
+    includedSummary,included,visit,contract,critical
   );
 }
 function chooseSupplierOption(cat,o,index){
@@ -545,8 +559,9 @@ function renderDiaD(){
 
 function renderEssenciais(){
   var el=q('essenciais'); el.innerHTML='';
+  if(!DB.essenciais.contingencias)DB.essenciais.contingencias=[ck('Definir plano B para chuva, vento ou calor extremo'),ck('Confirmar energia reserva / gerador e responsável pelo acionamento'),ck('Registrar contato alternativo para fornecedor essencial indisponível'),ck('Definir quem decide mudanças e comunica fornecedores e convidados'),ck('Planejar atraso de cerimônia, trânsito e local de espera dos convidados'),ck('Confirmar primeiros socorros, acesso de emergência e hospital próximo')];
   el.appendChild(h('div',{class:'card'}, h('h2',{},'🎒 Essenciais — não esquecer'), h('p',{class:'hint'},'Listas de conferência para não deixar nada passar. Marque o que já resolveu.')));
-  var groups=[['🧰 Kit emergência (levar na necessaire)','kit'],['📅 Semana do casamento','semana'],['👜 O que levar / ter no dia','levar'],['💵 Pagamentos e gorjetas do dia','gorjetas']];
+  var groups=[['⚠️ Plano B e contingências','contingencias'],['🧰 Kit emergência (levar na necessaire)','kit'],['📅 Semana do casamento','semana'],['👜 O que levar / ter no dia','levar'],['💵 Pagamentos e gorjetas do dia','gorjetas']];
   groups.forEach(function(g){
     var card=h('div',{class:'card'}, h('h2',{style:'font-size:1.02rem'},g[0]));
     card.appendChild(checklist(DB.essenciais[g[1]]));
@@ -591,7 +606,10 @@ function prepareWhatsAppInvite(g,reminder){
   if(!phone){toast('Informe o WhatsApp do convidado antes de preparar o convite.');return;}
   var name=g.nome||'querido(a) convidado(a)';
   var deadline=DB.prazoRSVP?(' até '+new Date(DB.prazoRSVP+'T12:00:00').toLocaleDateString('pt-BR')):'';
-  var text=reminder?('Olá, '+name+'! 💍\n\nPassando para lembrar da confirmação de presença para o nosso casamento em 15/05/2027'+deadline+'. Obrigado!'):('Olá, '+name+'! 💍\n\nEstamos muito felizes em convidar você para o nosso casamento em 15/05/2027.\n\nPedimos, por gentileza, que confirme sua presença'+deadline+'. Esperamos você!');
+  var eventInfo='15/05/2027'+(DB.hora?(' às '+DB.hora):'');
+  var place=[DB.local,DB.cidade].filter(Boolean).join(' — '),mapLink=DB.local?('\nMapa: https://www.google.com/maps/search/?api=1&query='+encodeURIComponent(place)):'';
+  var details='\n\nData: '+eventInfo+(place?('\nLocal: '+place):'')+mapLink;
+  var text=reminder?('Olá, '+name+'! 💍\n\nPassando para lembrar da confirmação de presença para o nosso casamento'+deadline+'.'+details+'\n\nObrigado!'):('Olá, '+name+'! 💍\n\nEstamos muito felizes em convidar você para o nosso casamento.'+details+'\n\nPedimos, por gentileza, que confirme sua presença'+deadline+'. Esperamos você!');
   g.convite=reminder?'Lembrete enviado':'Preparado no WhatsApp'; if(reminder)g.lembreteEnvio=new Date().toISOString().slice(0,10); else g.primeiroEnvio=g.primeiroEnvio||new Date().toISOString().slice(0,10); save();
   window.open('https://wa.me/'+phone+'?text='+encodeURIComponent(text),'_blank');
 }
@@ -599,7 +617,7 @@ function prepareWhatsAppInvite(g,reminder){
 function renderConvidados(){
   var el=q('convidados'); el.innerHTML='';
   var total=0,conf=0,pend=0,enviados=0;
-  DB.convidados.forEach(function(g){ var p=(pn(g.ad)+pn(g.cr))||1; total+=p; if(g.conf==='Confirmado')conf+=p; if(g.conf==='Pendente')pend++; if(g.convite==='Enviado')enviados+=p; });
+  DB.convidados.forEach(function(g){ var p=(pn(g.ad)+pn(g.cr))||1; total+=p; if(g.conf==='Confirmado')conf+=p; if(g.conf==='Pendente')pend++; if(g.convite==='Enviado'||g.convite==='Lembrete enviado')enviados+=p; });
   var planned=tf(DB,'convidadosPrevistos','60','text',updateBudgetSummaryText); planned.setAttribute('data-testid','guests-planned');
   var rsvpDeadline=tf(DB,'prazoRSVP','', 'date');
   var card=h('div',{class:'card'}, h('h2',{},'📋 Convidados & RSVP'),
