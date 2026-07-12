@@ -223,11 +223,18 @@ function withMeta(item,prefix){
   return Object.assign({},copy,{id:copy.id||makeId(prefix),createdAt:copy.createdAt||now,updatedAt:copy.updatedAt||now,archivedAt:copy.archivedAt||null});
 }
 function migrateRecords(items,prefix){ return (items||[]).map(function(item){ return withMeta(item,prefix); }); }
+function normalizeWeddingContent(data,defaults){
+  var changed=false;
+  ['mensagens','preferenciasNoivos'].forEach(function(key){ if(!data[key]||typeof data[key]!=='object'){data[key]=JSON.parse(JSON.stringify(defaults[key]));changed=true;} else Object.keys(defaults[key]).forEach(function(field){if(data[key][field]==null){data[key][field]=defaults[key][field];changed=true;}}); });
+  (data.cronograma||[]).forEach(function(phase){(phase.tarefas||[]).forEach(function(task){if(task.t==='Fechar o buffet com degustação e contrato (parrilla + costela fogo de chão)'){task.t='Fechar buffet, degustação e contrato';changed=true;}});});
+  (data.diad||[]).forEach(function(item){if(item.ativ==='Início do jantar (parrilla / costela fogo de chão)'){item.ativ='Início do jantar';changed=true;}});
+  return changed;
+}
 function migrateDB(raw){
   var source;
   try{ source=JSON.parse(JSON.stringify(raw||{})); }catch(e){ source={}; }
-  if(source.__v===SCHEMA_VERSION) return {data:source,changed:false};
   var defaults=defaultDB();
+  if(source.__v===SCHEMA_VERSION) return {data:source,changed:normalizeWeddingContent(source,defaults)};
   var data=Object.assign({},defaults,source,{__v:SCHEMA_VERSION});
   data.config={
     noiva:source.noiva!=null?source.noiva:(source.config&&source.config.noiva)||'',
@@ -242,6 +249,7 @@ function migrateDB(raw){
   data.pagamentos=migrateRecords(source.pagamentos||defaults.pagamentos,'pag');
   data.equipe=migrateRecords(source.equipe||defaults.equipe,'eqp');
   data.diad=migrateRecords(source.diad||defaults.diad,'dia');
+  normalizeWeddingContent(data,defaults);
   return {data:data,changed:true};
 }
 function validateDB(data){ return !!(data&&data.__v===SCHEMA_VERSION&&data.config&&Array.isArray(data.convidados)); }
@@ -314,7 +322,7 @@ function defaultDB(){ return {
   {hora:'16:00',ativ:'Cerimônia',resp:'',done:false},
   {hora:'16:45',ativ:'Cumprimentos e sessão de fotos dos noivos',resp:'',done:false},
   {hora:'17:15',ativ:'Entrada dos noivos na festa',resp:'',done:false},
-  {hora:'17:30',ativ:'Início do jantar (parrilla / costela fogo de chão)',resp:'',done:false},
+  {hora:'17:30',ativ:'Início do jantar',resp:'',done:false},
   {hora:'18:30',ativ:'Primeira dança / valsa',resp:'',done:false},
   {hora:'19:00',ativ:'Abertura da pista de dança',resp:'',done:false},
   {hora:'20:30',ativ:'Corte do bolo e brinde',resp:'',done:false},
@@ -659,6 +667,7 @@ function renderConvidados(){
 
 function renderNoivos(){
   var el=q('noivos'); el.innerHTML='';
+  if(!DB.preferenciasNoivos)DB.preferenciasNoivos=defaultDB().preferenciasNoivos;
   var preferences=h('details',{},h('summary',{},'Preferências dos noivos'),h('p',{class:'hint'},'Referências do casal para orientar a cerimonial e os fornecedores. Não são obrigações: adequem ao orçamento e às opções encontradas.'),field('Buffet / cardápio',ta(DB.preferenciasNoivos,'buffet','Preferências de buffet e cardápio')));
   el.appendChild(h('div',{class:'card'},h('h2',{},'💬 Preferências do casal'),preferences));
   el.appendChild(h('div',{class:'card'}, h('h2',{},'📄 Documentação — habilitação'),
