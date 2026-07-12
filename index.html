@@ -568,13 +568,13 @@ function renderPagamentos(){
   el.appendChild(card);
 }
 
-function prepareWhatsAppInvite(g){
+function prepareWhatsAppInvite(g,reminder){
   var phone=(g.telefone||'').replace(/\D/g,'');
   if(!phone){toast('Informe o WhatsApp do convidado antes de preparar o convite.');return;}
   var name=g.nome||'querido(a) convidado(a)';
   var deadline=DB.prazoRSVP?(' até '+new Date(DB.prazoRSVP+'T12:00:00').toLocaleDateString('pt-BR')):'';
-  var text='Olá, '+name+'! 💍\n\nEstamos muito felizes em convidar você para o nosso casamento em 15/05/2027.\n\nPedimos, por gentileza, que confirme sua presença'+deadline+'. Esperamos você!';
-  g.convite='Preparado no WhatsApp'; g.primeiroEnvio=g.primeiroEnvio||new Date().toISOString().slice(0,10); save();
+  var text=reminder?('Olá, '+name+'! 💍\n\nPassando para lembrar da confirmação de presença para o nosso casamento em 15/05/2027'+deadline+'. Obrigado!'):('Olá, '+name+'! 💍\n\nEstamos muito felizes em convidar você para o nosso casamento em 15/05/2027.\n\nPedimos, por gentileza, que confirme sua presença'+deadline+'. Esperamos você!');
+  g.convite=reminder?'Lembrete enviado':'Preparado no WhatsApp'; if(reminder)g.lembreteEnvio=new Date().toISOString().slice(0,10); else g.primeiroEnvio=g.primeiroEnvio||new Date().toISOString().slice(0,10); save();
   window.open('https://wa.me/'+phone+'?text='+encodeURIComponent(text),'_blank');
 }
 
@@ -602,7 +602,7 @@ function renderConvidados(){
       h('td',{}, sel(g,'convite',['Não enviado','Preparado no WhatsApp','Enviado','Lembrete enviado'],function(){renderConvidados();})),
       h('td',{}, sel(g,'conf',['Pendente','Confirmado','Não vai'],function(){renderConvidados();})),
       tdIn(g,'mesa'), tdIn(g,'obs'),
-      h('td',{}, h('button',{class:'btn s mini',onclick:function(){prepareWhatsAppInvite(g);}},'Preparar WhatsApp')),
+      h('td',{}, h('button',{class:'btn s mini',onclick:function(){prepareWhatsAppInvite(g);}},'Preparar WhatsApp'),g.conf==='Pendente'?h('button',{class:'btn mini',style:'margin-top:4px',onclick:function(){prepareWhatsAppInvite(g,true);}},'Lembrete RSVP'):null),
       h('td',{}, h('button',{class:'btn del mini',onclick:function(){DB.convidados.splice(i,1);save();renderConvidados();}},'×')));
     tb.appendChild(tr);
   });
