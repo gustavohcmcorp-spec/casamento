@@ -402,6 +402,9 @@ function renderInicio(){
     h('p',{class:'hint','data-testid':'budget-summary'},budgetSummaryText())
   ));
   var nextCard=nextPaymentCard('next-payment'); if(nextCard)el.appendChild(nextCard);
+  var chosenSuppliers=(DB.categorias||[]).filter(function(cat){return cat.opcaoEscolhida!==undefined&&cat.opcaoEscolhida!==null;}).length;
+  var supplierTotal=(DB.categorias||[]).length, supplierPercent=supplierTotal?Math.round(chosenSuppliers/supplierTotal*100):0;
+  el.appendChild(h('div',{class:'card','data-testid':'supplier-progress'},h('h2',{},'🤝 Fornecedores'),h('div',{class:'mini'},chosenSuppliers+' de '+supplierTotal+' escolhidos · '+supplierPercent+'%'),h('div',{class:'prog'},h('i',{style:'width:'+supplierPercent+'%'})),h('p',{class:'hint'},'Use “Escolher esta opção” na aba Fornecedores para enviar o contratado aos Pagamentos.')));
   el.appendChild(h('div',{class:'card'}, h('h2',{},'💍 Informações principais'),
     h('p',{class:'hint'},'Convidados previstos: ',h('b',{'data-testid':'home-guests-planned'},DB.convidadosPrevistos||'0')),
     h('div',{class:'grid2'}, field('Noiva',tf(DB,'noiva','Nome da noiva')), field('Noivo',tf(DB,'noivo','Nome do noivo'))),
