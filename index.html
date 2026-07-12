@@ -179,11 +179,12 @@ function load(){ try{ var s=localStorage.getItem(KEY); if(s)return JSON.parse(s)
 
 function tf(o,k,ph,type,afterInput){ var e=h('input',{class:'f',type:type||'text',placeholder:ph||'',oninput:function(){o[k]=e.value;saveD();if(afterInput)afterInput();}}); e.value=o[k]==null?'':o[k]; return e; }
 function moneyInput(o,k,ph,afterInput){ var e=h('input',{class:'f',type:'text',inputmode:'decimal',placeholder:ph||'',oninput:function(){o[k]=e.value;saveD();if(afterInput)afterInput();},onblur:function(){ if(e.value!==''){ e.value=formatMoney(e.value); o[k]=e.value; save(); if(afterInput)afterInput(); } }}); e.value=o[k]?formatMoney(o[k]):''; return e; }
-function ensurePayment(p){ return Object.assign({tipoCobranca:'fechado',valorUnitario:'',entradaTipo:'valor',entradaValor:'',parcelasQtd:'',primeiroVencimento:'',parcelasDetalhes:[],pixDescontoPercentual:'',modalidadeEscolhida:'parcelado'},p||{}); }
+function ensurePayment(p){ return Object.assign({tipoCobranca:'fechado',valorUnitario:'',entradaTipo:'valor',entradaValor:'',entradaStatus:'Pendente',entradaDataPagamento:'',parcelasQtd:'',primeiroVencimento:'',parcelasDetalhes:[],pixDescontoPercentual:'',modalidadeEscolhida:'parcelado'},p||{}); }
 function paymentTotal(p){ p=ensurePayment(p); return p.tipoCobranca==='porPessoa'?pn(p.valorUnitario)*pn(DB.convidadosPrevistos):pn(p.total); }
 function paymentEntry(p){ var total=paymentTotal(p); return p.entradaTipo==='percentual'?total*pn(p.entradaValor)/100:pn(p.entradaValor||p.entrada); }
 function paymentPix(p){ return paymentTotal(p)*(1-pn(p.pixDescontoPercentual)/100); }
-function paymentPaid(p){ if(p.modalidadeEscolhida==='pix')return p.pixPago?paymentPix(p):0; if((p.parcelasDetalhes||[]).length)return p.parcelasDetalhes.filter(function(x){return x.status==='Pago';}).reduce(function(a,x){return a+pn(x.valor);},0)+paymentEntry(p); return pn(p.pago); }
+function paymentEntryPaid(p){ return p.entradaStatus==='Pago'?paymentEntry(p):0; }
+function paymentPaid(p){ if(p.modalidadeEscolhida==='pix')return p.pixPago?paymentPix(p):0; if((p.parcelasDetalhes||[]).length)return p.parcelasDetalhes.filter(function(x){return x.status==='Pago';}).reduce(function(a,x){return a+pn(x.valor);},0)+paymentEntryPaid(p); return p.pago!==undefined&&p.pago!==''?pn(p.pago):paymentEntryPaid(p); }
 function paymentCommitted(p){ return p.modalidadeEscolhida==='pix'?paymentPix(p):paymentTotal(p); }
 function paymentBalance(p){ return Math.max(0,paymentCommitted(p)-paymentPaid(p)); }
 function generateInstallments(p){ var qtd=Math.max(0,parseInt(p.parcelasQtd,10)||0), first=p.primeiroVencimento?new Date(p.primeiroVencimento+'T12:00:00'):null, base=Math.max(0,paymentTotal(p)-paymentEntry(p)); if(!qtd||!first||!paymentTotal(p))return false; if((p.parcelasDetalhes||[]).some(function(x){return x.status==='Pago';}))return false; var cents=Math.round(base*100), each=Math.floor(cents/qtd); p.parcelasDetalhes=[]; for(var i=0;i<qtd;i++){var d=new Date(first);d.setMonth(d.getMonth()+i);var value=(i===qtd-1?cents-each*(qtd-1):each)/100;p.parcelasDetalhes.push({numero:i+1,vencimento:d.toISOString().slice(0,10),valor:formatMoney(value),status:'Pendente',dataPagamento:''});} return true; }
@@ -475,7 +476,7 @@ function statusClass(s){ if(s==='Contratado / pago'||s==='Reservado')return 'g';
 function renderEquipe(){
   var el=q('equipe'); el.innerHTML='';
   var card=h('div',{class:'card'}, h('h2',{},'👥 Prestadores no dia'), h('p',{class:'hint'},'Equipe que trabalha no dia. Preencha quantidade, diária, horário e contato.'));
-  var tb=h('tbody',{}); DB.equipe.forEach(function(r,i){ tb.appendChild(rowCells(r,['funcao','qtd','diaria','horario','obs'],['','num','num','',''],function(){DB.equipe.splice(i,1);save();renderEquipe();})); });
+  var tb=h('tbody',{}); DB.equipe.forEach(function(r,i){ tb.appendChild(rowCells(r,['funcao','qtd','diaria','horario','obs'],['','num','money','',''],function(){DB.equipe.splice(i,1);save();renderEquipe();})); });
   card.appendChild(h('div',{class:'twrap'}, h('table',{}, h('thead',{}, h('tr',{}, th('Função'),th('Qtd'),th('Diária (R$)'),th('Horário'),th('Contato / obs'),th(''))), tb)));
   card.appendChild(h('button',{class:'btn s mini addrow',onclick:function(){ DB.equipe.push({funcao:'',qtd:'',diaria:'',horario:'',obs:''}); save(); renderEquipe(); }},'+ função'));
   var tot=0; DB.equipe.forEach(function(r){ tot+=pn(r.diaria)*(pn(r.qtd)||1); });
@@ -516,11 +517,18 @@ function renderPagamentos(){
     var row=h('div',{class:'opt'},h('div',{class:'oh'},r.forn||'Fornecedor',h('span',{},formatMoney(total)+' · saldo '+formatMoney(balance))),h('div',{class:'grid2'},field('Fornecedor',tf(r,'forn','Fornecedor')),field('Modalidade',sel(r,'modalidadeEscolhida',['parcelado','pix'],function(){save();renderPagamentos();}))),h('div',{style:'display:flex;gap:8px;flex-wrap:wrap;margin-top:7px'},h('button',{class:'btn s mini',onclick:function(){row._details.classList.toggle('open');}},'Parcelas'),h('button',{class:'btn del mini',onclick:function(){DB.pagamentos.splice(i,1);save();renderPagamentos();}},'×')));
     var details=h('div',{class:'acc-b'}); row._details=details;
     details.appendChild(h('div',{class:'grid2'},field('Cobrança',sel(r,'tipoCobranca',['fechado','porPessoa'],function(){save();renderPagamentos();})),field(r.tipoCobranca==='porPessoa'?'Valor por pessoa':'Valor total',moneyInput(r,r.tipoCobranca==='porPessoa'?'valorUnitario':'total','0',function(){renderPagamentos();}))));
-    details.appendChild(h('div',{class:'grid2'},field('Entrada',moneyInput(r,'entradaValor','0')),field('Tipo entrada',sel(r,'entradaTipo',['valor','percentual']))));
+    var entradaInput=moneyInput(r,'entradaValor','0',function(){renderPagamentos();}); entradaInput.setAttribute('aria-label','Entrada');
+    var entradaStatus=sel(r,'entradaStatus',['Pendente','Pago'],function(){r.entradaDataPagamento=r.entradaStatus==='Pago'?(r.entradaDataPagamento||new Date().toISOString().slice(0,10)):'';save();renderPagamentos();}); entradaStatus.setAttribute('aria-label','Status da entrada');
+    details.appendChild(h('div',{class:'grid2'},field('Entrada',entradaInput),field('Tipo entrada',sel(r,'entradaTipo',['valor','percentual'],function(){save();renderPagamentos();})),field('Status da entrada',entradaStatus)));
     details.appendChild(h('div',{class:'grid2'},field('Nº parcelas',tf(r,'parcelasQtd','10')),field('1º vencimento',tf(r,'primeiroVencimento','', 'date'))));
     details.appendChild(h('button',{class:'btn s mini',onclick:function(){if(!generateInstallments(r))toast('Informe total, parcelas e primeiro vencimento; parcelas pagas não são recriadas.');save();renderPagamentos();}},'Gerar parcelas'));
     details.appendChild(h('div',{class:'grid2',style:'margin-top:8px'},field('Desconto Pix (%)',tf(r,'pixDescontoPercentual','0')),h('div',{class:'hint',style:'padding-top:23px'},'Pix à vista: '+formatMoney(paymentPix(r)))));
-    (r.parcelasDetalhes||[]).forEach(function(p){var line=h('div',{class:'inc'},h('div',{class:'lbl'},'Parcela '+p.numero+'/'+r.parcelasDetalhes.length+' · '+p.vencimento+' · '+formatMoney(p.valor)),sel(p,'status',['Pendente','Pago'],function(){p.dataPagamento=p.status==='Pago'?(p.dataPagamento||new Date().toISOString().slice(0,10)) : '';save();renderPagamentos();})); details.appendChild(line);});
+    (r.parcelasDetalhes||[]).forEach(function(p){
+      var due=tf(p,'vencimento','', 'date'); due.setAttribute('aria-label','Vencimento da parcela '+p.numero);
+      var amount=moneyInput(p,'valor','0',function(){save();renderPagamentos();}); amount.setAttribute('aria-label','Valor da parcela '+p.numero);
+      var status=sel(p,'status',['Pendente','Pago'],function(){p.dataPagamento=p.status==='Pago'?(p.dataPagamento||new Date().toISOString().slice(0,10)):'';save();renderPagamentos();}); status.setAttribute('aria-label','Situação da parcela '+p.numero);
+      details.appendChild(h('div',{class:'inc'},h('div',{class:'lbl'},'Parcela '+p.numero+'/'+r.parcelasDetalhes.length),h('div',{class:'grid2'},field('Vencimento',due),field('Valor',amount),field('Situação',status))));
+    });
     row.appendChild(details);box.appendChild(row);
   });
   card.appendChild(box);card.appendChild(h('button',{class:'btn s mini addrow',onclick:function(){DB.pagamentos.push(ensurePayment({forn:'',total:''}));save();renderPagamentos();}},'+ fornecedor'));
@@ -583,7 +591,7 @@ function rowCells(o,keys,types,onDel){
   var tr=h('tr',{}); keys.forEach(function(k,i){ tr.appendChild(tdIn(o,k,types[i])); });
   tr.appendChild(h('td',{}, h('button',{class:'btn del mini',onclick:function(){ onDel(); }},'×'))); return tr;
 }
-function tdIn(o,k,cls){ var td=h('td',{class:(cls==='num'?'num':'')}); var e=h('input',{type:'text',oninput:function(){o[k]=e.value;saveD();}}); e.value=o[k]==null?'':o[k]; td.appendChild(e); return td; }
+function tdIn(o,k,cls){ var isMoney=cls==='money'; var td=h('td',{class:(cls==='num'?'num':'')}); var e=h('input',{type:'text',inputmode:isMoney?'decimal':'text',oninput:function(){o[k]=e.value;saveD();},onblur:function(){if(isMoney&&e.value!==''){e.value=formatMoney(e.value);o[k]=e.value;save();}}}); e.value=o[k]==null?'':(isMoney&&o[k]!==''?formatMoney(o[k]):o[k]); td.appendChild(e); return td; }
 function th(t){ return h('th',{},t); }
 function q(n){ return document.querySelector('.tab[data-tab="'+n+'"]'); }
 
