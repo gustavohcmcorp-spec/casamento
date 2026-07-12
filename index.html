@@ -410,6 +410,8 @@ function renderInicio(){
   if(pn(DB.convidadosPrevistos)&&rsvpConfirmed<pn(DB.convidadosPrevistos))preventive.push('RSVP ainda incompleto: '+rsvpConfirmed+' de '+DB.convidadosPrevistos+' confirmações.');
   var scopePending=0; (DB.categorias||[]).forEach(function(cat){ if(cat.opcaoEscolhida!==undefined&&cat.opcoes[cat.opcaoEscolhida])scopePending+=(cat.opcoes[cat.opcaoEscolhida].itens||[]).filter(function(item){return item.inc!==''&&item.inc!=='Sim'&&item.inc!=='N/A';}).length; });
   if(scopePending)preventive.push(scopePending+' itens não inclusos em fornecedores escolhidos precisam de solução.');
+  var contractPending=(DB.categorias||[]).filter(function(cat){var o=cat.opcoes&&cat.opcoes[cat.opcaoEscolhida];return !cat.naoTera&&o&&o.contratoStatus!=='Assinado';}).length;
+  if(contractPending)preventive.push(contractPending+' fornecedores escolhidos ainda não têm contrato confirmado.');
   if(DB.prazoRSVP&&pn(DB.convidadosPrevistos)>rsvpConfirmed){var diff=Math.ceil((new Date(DB.prazoRSVP+'T12:00:00')-new Date())/86400000);if(diff<=14)preventive.push('Prazo de RSVP próximo: faltam '+Math.max(0,diff)+' dias.');}
   if(preventive.length)el.appendChild(h('div',{class:'card','data-testid':'preventive-alerts'},h('h2',{},'⚠️ Atenção preventiva'),preventive.map(function(item){return h('p',{class:'hint'},'• '+item);}))); 
   var nextCard=nextPaymentCard('next-payment'); if(nextCard)el.appendChild(nextCard);
@@ -487,13 +489,14 @@ function optBlock(cat,o,i){
   var includedSummary=h('details',{},h('summary',{},'Resumo automático do que inclui'),h('p',{class:'hint'},(o.itens.filter(function(item){return item.inc==='Sim';}).map(function(item){return item.label;}).join(' • ')||'Marque os itens incluídos para gerar o resumo.')));
   var maps=h('a',{class:'btn s mini',target:'_blank',href:'https://www.google.com/maps/search/?api=1&query='+encodeURIComponent(o.visitaEndereco||''),'aria-label':'Abrir no Google Maps'},'Abrir no Google Maps');
   var visit=h('details',{},h('summary',{},'Visita ao fornecedor'),h('div',{class:'grid2'},field('Data',tf(o,'visitaData','', 'date')),field('Horário',tf(o,'visitaHora','', 'time'))),field('Endereço',tf(o,'visitaEndereco','Endereço da visita', 'text',function(){maps.href='https://www.google.com/maps/search/?api=1&query='+encodeURIComponent(o.visitaEndereco||'');})),field('Observações',ta(o,'visitaObs','Pontos para conferir')),h('div',{style:'display:flex;gap:6px;flex-wrap:wrap;margin-top:7px'},maps,h('button',{class:'btn mini',onclick:function(){downloadVisitEvent(o);}},'Adicionar à agenda')));
+  var contract=h('details',{},h('summary',{},'Contrato'),field('Situação',sel(o,'contratoStatus',['Não existe','Em andamento','Assinado'])),h('div',{class:'grid2'},field('Data da assinatura',tf(o,'contratoData','', 'date')),field('Nº / referência',tf(o,'contratoNumero','Número do contrato'))),field('Link / arquivo do contrato',tf(o,'contratoLink','Será preenchido após upload')),field('Observações do contrato',ta(o,'contratoObs','Sinal, cláusulas, multa, prazo de entrega')));
   return h('div',{class:'opt'},
     h('div',{class:'oh'}, 'Opção '+(i+1)+(cat.opcaoEscolhida===i?' · ✓ Escolhida':''), h('div',{style:'display:flex;gap:5px'},h('button',{class:'btn s mini',onclick:function(){cat.opcaoEscolhida===i?unchooseSupplierOption(cat):chooseSupplierOption(cat,o,i);}},cat.opcaoEscolhida===i?'Desfazer escolha':'Escolher esta opção'),h('button',{class:'btn del mini',onclick:function(){ if(cat.opcoes.length<=1)return; cat.opcoes.splice(i,1); save(); renderFornecedores(); }},'remover'))),
     h('div',{class:'grid2'}, field('Fornecedor',tf(o,'nome','Nome')), field('Contato',tf(o,'contato','Tel / @ / site'))),
     h('div',{class:'grid2'},field('Cobrança',sel(o,'tipoCobranca',['fechado','porPessoa'],function(){save();renderFornecedores();})),field(o.tipoCobranca==='porPessoa'?'Valor por pessoa':'Valor (R$)',moneyInput(o,o.tipoCobranca==='porPessoa'?'valorUnitario':'valor','0'))),
     o.tipoCobranca==='porPessoa'?h('p',{class:'hint'},'Estimativa: '+formatMoney(pn(o.valorUnitario)*pn(DB.convidadosPrevistos))+' para '+(DB.convidadosPrevistos||0)+' convidados'):null,
     field('Complementos do que inclui', ta(o,'inclui','Adicione algo que não esteja no checklist')),
-    includedSummary,included,visit
+    includedSummary,included,visit,contract
   );
 }
 function chooseSupplierOption(cat,o,index){
