@@ -1,0 +1,10 @@
+{
+  "rules": {
+    "casamento": {
+      "shared": {
+        ".read": "auth != null && (auth.uid === '7U4MskCQQnPNTYlCrtMtJaghndD2' || auth.uid === 'pQmskH4febcW2DFYFy8l8qJu3fH3')",
+        ".write": "auth != null && (auth.uid === '7U4MskCQQnPNTYlCrtMtJaghndD2' || auth.uid === 'pQmskH4febcW2DFYFy8l8qJu3fH3')"
+      }
+    }
+  }
+}
