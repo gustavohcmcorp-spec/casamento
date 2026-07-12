@@ -481,10 +481,11 @@ function renderFornecedores(){
     body.appendChild(h('h3',{},'Opções de fornecedores'));
     var ow=h('div',{}); cat.opcoes.forEach(function(o,i){ ow.appendChild(optBlock(cat,o,i)); }); body.appendChild(ow);
     body.appendChild(h('button',{class:'btn s mini addrow',onclick:function(){ cat.opcoes.push(opt()); save(); ow.appendChild(optBlock(cat,cat.opcoes[cat.opcoes.length-1],cat.opcoes.length-1)); }},'+ opção'));
-    var chip=h('span',{class:'chip '+statusClass(cat.status)}, cat.status||'a definir');
+    var displayStatus=cat.naoTera==='Não terá'?'Não terá':cat.status;
+    var chip=h('span',{class:'chip '+statusClass(displayStatus)}, displayStatus||'a definir');
     body.appendChild(h('h3',{},'Decisão'));
     body.appendChild(h('div',{class:'grid2'},
-      field('Status', sel(cat,'status',STATUS,function(){ chip.className='chip '+statusClass(cat.status); chip.textContent=cat.status||'a definir'; })),
+      field('Status', sel(cat,'status',STATUS,function(){ var value=cat.naoTera==='Não terá'?'Não terá':cat.status; chip.className='chip '+statusClass(value); chip.textContent=value||'a definir'; })),
       field('Categoria', sel(cat,'naoTera',['','Não terá'],function(){save();renderFornecedores();}))
     ));
     body.appendChild(field('Observações', ta(cat,'obs','Anotações, condições, o que falta...')));
