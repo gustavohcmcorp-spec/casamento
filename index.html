@@ -572,7 +572,8 @@ function prepareWhatsAppInvite(g){
   var phone=(g.telefone||'').replace(/\D/g,'');
   if(!phone){toast('Informe o WhatsApp do convidado antes de preparar o convite.');return;}
   var name=g.nome||'querido(a) convidado(a)';
-  var text='Olá, '+name+'! 💍\n\nEstamos muito felizes em convidar você para o nosso casamento em 15/05/2027.\n\nPedimos, por gentileza, que confirme sua presença. Esperamos você!';
+  var deadline=DB.prazoRSVP?(' até '+new Date(DB.prazoRSVP+'T12:00:00').toLocaleDateString('pt-BR')):'';
+  var text='Olá, '+name+'! 💍\n\nEstamos muito felizes em convidar você para o nosso casamento em 15/05/2027.\n\nPedimos, por gentileza, que confirme sua presença'+deadline+'. Esperamos você!';
   g.convite='Preparado no WhatsApp'; g.primeiroEnvio=g.primeiroEnvio||new Date().toISOString().slice(0,10); save();
   window.open('https://wa.me/'+phone+'?text='+encodeURIComponent(text),'_blank');
 }
@@ -582,8 +583,9 @@ function renderConvidados(){
   var total=0,conf=0,pend=0,enviados=0;
   DB.convidados.forEach(function(g){ var p=(pn(g.ad)+pn(g.cr))||1; total+=p; if(g.conf==='Confirmado')conf+=p; if(g.conf==='Pendente')pend++; if(g.convite==='Enviado')enviados+=p; });
   var planned=tf(DB,'convidadosPrevistos','60','text',updateBudgetSummaryText); planned.setAttribute('data-testid','guests-planned');
+  var rsvpDeadline=tf(DB,'prazoRSVP','', 'date');
   var card=h('div',{class:'card'}, h('h2',{},'📋 Convidados & RSVP'),
-    field('Convidados previstos',planned),
+    h('div',{class:'grid2'},field('Convidados previstos',planned),field('Prazo para RSVP',rsvpDeadline)),
     h('div',{class:'kpi',style:'margin:6px 0 10px'},
       h('div',{class:'k'}, h('div',{class:'v'},total), h('div',{class:'t'},'na lista')),
       h('div',{class:'k'}, h('div',{class:'v'},enviados), h('div',{class:'t'},'convites enviados')),
