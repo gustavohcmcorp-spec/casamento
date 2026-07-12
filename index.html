@@ -482,7 +482,7 @@ function optBlock(cat,o,i){
   var included=h('details',{},h('summary',{},'Itens incluídos e pendências'));
   o.itens.forEach(function(item){ var note=h('input',{class:'cn obs',placeholder:'Se não incluso: onde contratar / observação',oninput:function(){item.obs=note.value;saveD();}}); note.value=item.obs||''; included.appendChild(h('div',{class:'inc'},h('div',{class:'lbl'},item.label),sel(item,'inc',['','Sim','Não','N/A']),note)); });
   var maps=h('a',{class:'btn s mini',target:'_blank',href:'https://www.google.com/maps/search/?api=1&query='+encodeURIComponent(o.visitaEndereco||''),'aria-label':'Abrir no Google Maps'},'Abrir no Google Maps');
-  var visit=h('details',{},h('summary',{},'Visita ao fornecedor'),h('div',{class:'grid2'},field('Data',tf(o,'visitaData','', 'date')),field('Horário',tf(o,'visitaHora','', 'time'))),field('Endereço',tf(o,'visitaEndereco','Endereço da visita', 'text',function(){maps.href='https://www.google.com/maps/search/?api=1&query='+encodeURIComponent(o.visitaEndereco||'');})),maps);
+  var visit=h('details',{},h('summary',{},'Visita ao fornecedor'),h('div',{class:'grid2'},field('Data',tf(o,'visitaData','', 'date')),field('Horário',tf(o,'visitaHora','', 'time'))),field('Endereço',tf(o,'visitaEndereco','Endereço da visita', 'text',function(){maps.href='https://www.google.com/maps/search/?api=1&query='+encodeURIComponent(o.visitaEndereco||'');})),field('Observações',ta(o,'visitaObs','Pontos para conferir')),h('div',{style:'display:flex;gap:6px;flex-wrap:wrap;margin-top:7px'},maps,h('button',{class:'btn mini',onclick:function(){downloadVisitEvent(o);}},'Adicionar à agenda')));
   return h('div',{class:'opt'},
     h('div',{class:'oh'}, 'Opção '+(i+1)+(cat.opcaoEscolhida===i?' · ✓ Escolhida':''), h('div',{style:'display:flex;gap:5px'},h('button',{class:'btn s mini',onclick:function(){cat.opcaoEscolhida===i?unchooseSupplierOption(cat):chooseSupplierOption(cat,o,i);}},cat.opcaoEscolhida===i?'Desfazer escolha':'Escolher esta opção'),h('button',{class:'btn del mini',onclick:function(){ if(cat.opcoes.length<=1)return; cat.opcoes.splice(i,1); save(); renderFornecedores(); }},'remover'))),
     h('div',{class:'grid2'}, field('Fornecedor',tf(o,'nome','Nome')), field('Contato',tf(o,'contato','Tel / @ / site'))),
@@ -500,6 +500,15 @@ function chooseSupplierOption(cat,o,index){
   cat.opcaoEscolhida=index; cat.decisao=p.forn; cat.status='Reservado'; cat.open=true; save(); renderFornecedores(); toast('Opção enviada para Pagamentos.');
 }
 function unchooseSupplierOption(cat){ delete cat.opcaoEscolhida; delete cat.decisao; if(cat.status==='Reservado')cat.status='Orçamento recebido'; cat.open=true; save();renderFornecedores();toast('Escolha desfeita; os dados foram mantidos.'); }
+function downloadVisitEvent(o){
+  if(!o.visitaData||!o.visitaHora){toast('Informe data e horário da visita.');return;}
+  var start=o.visitaData.replace(/-/g,'')+'T'+o.visitaHora.replace(':','')+'00';
+  var end=new Date(o.visitaData+'T'+o.visitaHora+':00'); end.setHours(end.getHours()+1);
+  var endText=end.toISOString().replace(/[-:]/g,'').slice(0,15);
+  var clean=function(v){return (v||'').replace(/[\\,;\n]/g,' ');};
+  var data='BEGIN:VCALENDAR\r\nVERSION:2.0\r\nBEGIN:VEVENT\r\nDTSTART:'+start+'\r\nDTEND:'+endText+'\r\nSUMMARY:Visita — '+clean(o.nome||'Fornecedor')+'\r\nLOCATION:'+clean(o.visitaEndereco)+'\r\nDESCRIPTION:'+clean(o.visitaObs)+'\r\nEND:VEVENT\r\nEND:VCALENDAR';
+  var a=document.createElement('a'); a.href=URL.createObjectURL(new Blob([data],{type:'text/calendar'})); a.download='visita-fornecedor.ics'; a.click(); setTimeout(function(){URL.revokeObjectURL(a.href);},1000);
+}
 function statusClass(s){ if(s==='Contratado / pago'||s==='Reservado')return 'g'; if(s==='Orçamento recebido')return 'y'; return 'n'; }
 
 function renderEquipe(){
