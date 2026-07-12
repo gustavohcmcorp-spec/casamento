@@ -175,7 +175,7 @@ function save(){ try{ localStorage.setItem(KEY,JSON.stringify(DB)); }catch(e){ c
 function saveD(){ clearTimeout(saveT); saveT=setTimeout(save,350); }
 function load(){ try{ var s=localStorage.getItem(KEY); if(s)return JSON.parse(s); }catch(e){ canStore=false; } return null; }
 
-function tf(o,k,ph,type){ var e=h('input',{class:'f',type:type||'text',placeholder:ph||'',oninput:function(){o[k]=e.value;saveD();}}); e.value=o[k]==null?'':o[k]; return e; }
+function tf(o,k,ph,type,afterInput){ var e=h('input',{class:'f',type:type||'text',placeholder:ph||'',oninput:function(){o[k]=e.value;saveD();if(afterInput)afterInput();}}); e.value=o[k]==null?'':o[k]; return e; }
 function ta(o,k,ph){ var e=h('textarea',{class:'f',placeholder:ph||'',oninput:function(){o[k]=e.value;saveD();}}); e.value=o[k]==null?'':o[k]; return e; }
 function sel(o,k,opts,onch){ var s=h('select',{class:'f',onchange:function(){o[k]=s.value;save();if(onch)onch();}}); opts.forEach(function(op){ var x=h('option',{value:op},op===''?'—':op); if((o[k]==null?'':o[k])===op)x.selected=true; s.appendChild(x); }); return s; }
 function cb(o,k,onch){ var c=h('input',{type:'checkbox',onchange:function(){o[k]=c.checked;save();if(onch)onch();}}); c.checked=!!o[k]; return c; }
@@ -246,7 +246,7 @@ function defaultDB(){ return {
   CAT('22. Hospedagem','',['Suíte dos noivos','Hotel p/ convidados de fora','Bloqueio de quartos / desconto','Café da manhã','Transfer do hotel'])
  ],
  cronograma:[
-  {fase:'12+ meses antes (agora → mai/2026)',tarefas:[ck('Definir estilo, nº de convidados (~60) e orçamento (meta R$30 mil / teto R$60 mil)'),ck('Montar lista preliminar de convidados'),ck('Contratar a assessoria / cerimonial e alinhar expectativas'),ck('Visitar e reservar o espaço de eventos (contrato + sinal)'),ck('Confirmar a data com o espaço: 15/05/2027 (sábado)')]},
+  {fase:'12+ meses antes (até mai/2026)',tarefas:[ck('Definir estilo, nº de convidados (~60) e orçamento (meta R$30 mil / teto R$60 mil)'),ck('Montar lista preliminar de convidados'),ck('Contratar a assessoria / cerimonial e alinhar expectativas'),ck('Visitar e reservar o espaço de eventos (contrato + sinal)'),ck('Confirmar a data com o espaço: 15/05/2027 (sábado)')]},
   {fase:'10 a 12 meses (jun–ago/2026)',tarefas:[ck('Fechar o buffet com degustação e contrato (parrilla + costela fogo de chão)'),ck('Contratar fotografia e vídeo'),ck('Definir padrinhos e madrinhas'),ck('Reservar DJ / música')]},
   {fase:'8 a 10 meses (set–out/2026)',tarefas:[ck('Contratar decoração e flores'),ck('Escolher vestido da noiva e traje do noivo (iniciar)'),ck('Definir identidade visual / design dos convites'),ck('Contratar celebrante (civil / religioso)')]},
   {fase:'6 a 8 meses (nov–dez/2026)',tarefas:[ck('Degustar e fechar bolo e doces'),ck('Fechar bebidas / bar'),ck('Fazer teste de beleza (cabelo e maquiagem)'),ck('Pesquisar e reservar a lua de mel')]},
@@ -326,6 +326,8 @@ function updateHeader(){
   setTxt('heroDays',days());
 }
 function setTxt(id,v){ var e=document.getElementById(id); if(e)e.textContent=v; }
+function budgetSummaryText(){ return 'Os valores vêm da aba Pagamentos. Meta planejada: '+fmt(pn(DB.meta))+'; o teto de '+fmt(pn(DB.teto))+' orienta a folga disponível.'; }
+function updateBudgetSummaryText(){ var e=document.querySelector('[data-testid="budget-summary"]'); if(e)e.textContent=budgetSummaryText(); }
 
 function renderInicio(){
   var el=q('inicio'); el.innerHTML='';
@@ -351,8 +353,10 @@ function renderInicio(){
   el.appendChild(np);
   var contratado=0,pago=0; DB.pagamentos.forEach(function(p){contratado+=pn(p.total);pago+=pn(p.pago);});
   var teto=pn(DB.teto), perc2=teto?Math.min(100,Math.round(contratado/teto*100)):0;
+  var metaInput=tf(DB,'meta','30000','text',updateBudgetSummaryText), tetoInput=tf(DB,'teto','60000','text',updateBudgetSummaryText);
+  metaInput.setAttribute('data-testid','budget-meta'); tetoInput.setAttribute('data-testid','budget-teto');
   el.appendChild(h('div',{class:'card'}, h('h2',{},'💰 Orçamento'),
-    h('div',{class:'grid2'}, field('Meta (R$)',tf(DB,'meta','30000')), field('Teto (R$)',tf(DB,'teto','60000'))),
+    h('div',{class:'grid2'}, field('Meta (R$)',metaInput), field('Teto (R$)',tetoInput)),
     h('div',{class:'prog'}, h('i',{style:'width:'+perc2+'%'})),
     h('div',{class:'mini'},'Contratado × teto: '+perc2+'%'),
     h('div',{class:'kpi',style:'margin-top:10px'},
@@ -361,7 +365,7 @@ function renderInicio(){
       h('div',{class:'k'}, h('div',{class:'v'},fmt(contratado-pago)), h('div',{class:'t'},'Saldo a pagar')),
       h('div',{class:'k'}, h('div',{class:'v',style:(contratado>teto?'color:#a24b34':'')},fmt(teto-contratado)), h('div',{class:'t'},'Folga até o teto'))
     ),
-    h('p',{class:'hint'},'Os valores vêm da aba Pagamentos. Meta enxuta de R$30 mil; o teto de R$60 mil evita surpresas.')
+    h('p',{class:'hint','data-testid':'budget-summary'},budgetSummaryText())
   ));
   el.appendChild(h('div',{class:'card'}, h('h2',{},'💍 Informações principais'),
     h('div',{class:'grid2'}, field('Noiva',tf(DB,'noiva','Nome da noiva')), field('Noivo',tf(DB,'noivo','Nome do noivo'))),
