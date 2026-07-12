@@ -401,6 +401,14 @@ function renderInicio(){
     ),
     h('p',{class:'hint','data-testid':'budget-summary'},budgetSummaryText())
   ));
+  var preventive=[];
+  if(teto&&contratado>teto)preventive.push('O valor comprometido ultrapassa o teto do orçamento.');
+  else if(teto&&contratado>teto*.9)preventive.push('O valor comprometido está próximo do teto do orçamento.');
+  var pendingSuppliers=(DB.categorias||[]).filter(function(cat){return cat.opcaoEscolhida===undefined||cat.opcaoEscolhida===null;}).length;
+  if(pendingSuppliers)preventive.push(pendingSuppliers+' fornecedores ainda não foram escolhidos.');
+  var rsvpConfirmed=(DB.convidados||[]).reduce(function(sum,g){return sum+(g.conf==='Confirmado'?((pn(g.ad)+pn(g.cr))||1):0);},0);
+  if(pn(DB.convidadosPrevistos)&&rsvpConfirmed<pn(DB.convidadosPrevistos))preventive.push('RSVP ainda incompleto: '+rsvpConfirmed+' de '+DB.convidadosPrevistos+' confirmações.');
+  if(preventive.length)el.appendChild(h('div',{class:'card','data-testid':'preventive-alerts'},h('h2',{},'⚠️ Atenção preventiva'),preventive.map(function(item){return h('p',{class:'hint'},'• '+item);}))); 
   var nextCard=nextPaymentCard('next-payment'); if(nextCard)el.appendChild(nextCard);
   var chosenSuppliers=(DB.categorias||[]).filter(function(cat){return cat.opcaoEscolhida!==undefined&&cat.opcaoEscolhida!==null;}).length;
   var supplierTotal=(DB.categorias||[]).length, supplierPercent=supplierTotal?Math.round(chosenSuppliers/supplierTotal*100):0;
