@@ -463,11 +463,6 @@ function renderFornecedores(){
     body.appendChild(h('h3',{},'Opções de fornecedores'));
     var ow=h('div',{}); cat.opcoes.forEach(function(o,i){ ow.appendChild(optBlock(cat,o,i)); }); body.appendChild(ow);
     body.appendChild(h('button',{class:'btn s mini addrow',onclick:function(){ cat.opcoes.push(opt()); save(); ow.appendChild(optBlock(cat,cat.opcoes[cat.opcoes.length-1],cat.opcoes.length-1)); }},'+ opção'));
-    body.appendChild(h('h3',{},'Está incluso? (confirme com o fornecedor)'));
-    cat.itens.forEach(function(it){
-      var o=h('input',{class:'cn obs',placeholder:'Se NÃO: onde contratar + valor / observação',oninput:function(){it.obs=o.value;saveD();}}); o.value=it.obs||'';
-      body.appendChild(h('div',{class:'inc'}, h('div',{class:'lbl'},it.label), sel(it,'inc',['','Sim','Não','N/A']), o));
-    });
     var chip=h('span',{class:'chip '+statusClass(cat.status)}, cat.status||'a definir');
     body.appendChild(h('h3',{},'Decisão'));
     body.appendChild(h('div',{class:'grid2'},
@@ -483,12 +478,16 @@ function renderFornecedores(){
   });
 }
 function optBlock(cat,o,i){
+  if(!o.itens)o.itens=cat.itens.map(function(item){return {label:item.label,inc:'',obs:''};});
+  var included=h('details',{},h('summary',{},'Itens incluídos e pendências'));
+  o.itens.forEach(function(item){ var note=h('input',{class:'cn obs',placeholder:'Se não incluso: onde contratar / observação',oninput:function(){item.obs=note.value;saveD();}}); note.value=item.obs||''; included.appendChild(h('div',{class:'inc'},h('div',{class:'lbl'},item.label),sel(item,'inc',['','Sim','Não','N/A']),note)); });
   return h('div',{class:'opt'},
     h('div',{class:'oh'}, 'Opção '+(i+1)+(cat.opcaoEscolhida===i?' · ✓ Escolhida':''), h('div',{style:'display:flex;gap:5px'},h('button',{class:'btn s mini',onclick:function(){chooseSupplierOption(cat,o,i);}},cat.opcaoEscolhida===i?'✓ Escolhido':'Escolher esta opção'),h('button',{class:'btn del mini',onclick:function(){ if(cat.opcoes.length<=1)return; cat.opcoes.splice(i,1); save(); renderFornecedores(); }},'remover'))),
     h('div',{class:'grid2'}, field('Fornecedor',tf(o,'nome','Nome')), field('Contato',tf(o,'contato','Tel / @ / site'))),
     h('div',{class:'grid2'},field('Cobrança',sel(o,'tipoCobranca',['fechado','porPessoa'],function(){save();renderFornecedores();})),field(o.tipoCobranca==='porPessoa'?'Valor por pessoa':'Valor (R$)',moneyInput(o,o.tipoCobranca==='porPessoa'?'valorUnitario':'valor','0'))),
     o.tipoCobranca==='porPessoa'?h('p',{class:'hint'},'Estimativa: '+formatMoney(pn(o.valorUnitario)*pn(DB.convidadosPrevistos))+' para '+(DB.convidadosPrevistos||0)+' convidados'):null,
-    field('O que inclui', ta(o,'inclui','Descreva o que está incluído nesta opção'))
+    field('O que inclui', ta(o,'inclui','Descreva o que está incluído nesta opção')),
+    included
   );
 }
 function chooseSupplierOption(cat,o,index){
