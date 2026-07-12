@@ -7,9 +7,9 @@
 <title>Plano de Casamento — 15/05/2027 · Goiânia</title>
 <style>
   :root{
-    --bg:#f6f1e8; --card:#f7f0e5; --ink:#3b3a34; --muted:#7c786e;
-    --line:#e7ddcb; --sage:#6f8064; --sage-d:#4f5d45; --gold:#bd9a3f; --gold-l:#e7d29a;
-    --soft:#efe7d7; --cream:#faf5ec; --ok:#5b8c5a; --rose:#c08a72;
+    --bg:#eee6da; --card:#f5ede1; --ink:#3b3a34; --muted:#777167;
+    --line:#d9ccba; --sage:#6f8064; --sage-d:#4f5d45; --gold:#bd9a3f; --gold-l:#e7d29a;
+    --soft:#e8ddce; --cream:#eee4d6; --ok:#5b8c5a; --rose:#c08a72;
     --sh:0 3px 14px rgba(90,75,45,.09);
   }
   *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
@@ -23,7 +23,7 @@
   .top .d{color:var(--gold-l)}
   .tabs{position:sticky;top:33px;z-index:29;background:var(--bg);display:flex;gap:6px;overflow-x:auto;padding:8px 10px;border-bottom:1px solid var(--line);scrollbar-width:none}
   .tabs::-webkit-scrollbar{display:none}
-  .tabs button{flex:0 0 auto;border:1px solid var(--line);background:#fff;color:var(--muted);border-radius:22px;padding:7px 14px;font-size:.82rem;font-weight:600;white-space:nowrap;cursor:pointer}
+  .tabs button{flex:0 0 auto;border:1px solid var(--line);background:var(--card);color:var(--muted);border-radius:22px;padding:7px 14px;font-size:.82rem;font-weight:600;white-space:nowrap;cursor:pointer}
   .tabs button.on{background:var(--sage);color:#fff;border-color:var(--sage);box-shadow:0 2px 8px rgba(111,128,100,.35)}
   .tab{display:none;padding-top:14px}
   .tab.active{display:block}
@@ -46,14 +46,14 @@
   .pref{background:linear-gradient(90deg,#fbf4df,#fdfbf4);border-left:4px solid var(--gold);border-radius:10px;padding:10px 12px;font-size:.86rem;margin:8px 0}
   .field{margin-bottom:9px}
   label.fl{font-size:.7rem;text-transform:uppercase;letter-spacing:.5px;color:var(--muted);display:block;margin-bottom:3px}
-  .f{width:100%;border:1px solid var(--line);border-radius:10px;padding:10px;font-size:.95rem;background:#fff;color:var(--ink);font-family:inherit}
+  .f{width:100%;border:1px solid var(--line);border-radius:10px;padding:10px;font-size:.95rem;background:#fbf7f0;color:var(--ink);font-family:inherit}
   .f:focus{outline:2px solid var(--sage);outline-offset:-1px;border-color:var(--sage)}
   textarea.f{min-height:54px;resize:vertical}
   .grid2{display:grid;grid-template-columns:1fr 1fr;gap:9px}
   .grid3{display:grid;grid-template-columns:repeat(3,1fr);gap:9px}
   @media(max-width:560px){.grid3{grid-template-columns:1fr 1fr}}
   .btn{border:none;border-radius:11px;padding:10px 14px;font-size:.85rem;font-weight:700;cursor:pointer;font-family:inherit}
-  .btn.p{background:var(--sage);color:#fff}.btn.s{background:#fff;color:var(--sage-d);border:1px solid var(--line)}
+  .btn.p{background:var(--sage);color:#fff}.btn.s{background:#fbf7f0;color:var(--sage-d);border:1px solid var(--line)}
   .btn.gold{background:var(--gold);color:#fff}
   .btn.mini{padding:6px 10px;font-size:.76rem}
   .btn.del{background:#fbe9e3;color:#a24b34}
@@ -71,13 +71,13 @@
   .acc-b.open{display:block}
   .chip{font-size:.66rem;padding:3px 9px;border-radius:20px;font-weight:700;white-space:nowrap}
   .chip.g{background:#e6efe0;color:var(--sage-d)}.chip.y{background:#f7ecd2;color:#8a6d1e}.chip.n{background:#efe9de;color:#96917f}
-  .opt{border:1px dashed var(--line);border-radius:12px;padding:11px;margin:8px 0;background:#fcfaf4}
+  .opt{border:1px solid var(--line);border-radius:12px;padding:11px;margin:8px 0;background:var(--cream)}
   .opt .oh{font-size:.76rem;font-weight:700;color:var(--sage-d);margin-bottom:6px;display:flex;justify-content:space-between;align-items:center}
   .mini{font-size:.78rem;color:var(--muted)}
   .inc{display:grid;grid-template-columns:1fr auto;gap:6px 8px;align-items:center;border-bottom:1px solid var(--soft);padding:7px 0}
   .inc:last-child{border-bottom:none}
   .inc .lbl{font-size:.88rem}
-  .inc select{border:1px solid var(--line);border-radius:8px;padding:6px;font-size:.8rem;background:#fff}
+  .inc select{border:1px solid var(--line);border-radius:8px;padding:6px;font-size:.8rem;background:#fbf7f0}
   .inc .obs{grid-column:1/-1}
   .ck{display:flex;align-items:flex-start;gap:11px;padding:10px 2px;border-bottom:1px solid var(--soft)}
   .ck:last-child{border-bottom:none}
@@ -95,7 +95,7 @@
   td input:focus,td select:focus{border-color:var(--sage);outline:none;background:#fff}
   td.num input{text-align:right}
   tfoot td{background:#f2ede1;font-weight:700}
-  .bar{position:fixed;bottom:0;left:0;right:0;background:#fff;border-top:1px solid var(--line);display:flex;gap:8px;justify-content:center;padding:9px 10px;z-index:35;flex-wrap:wrap}
+  .bar{position:fixed;bottom:0;left:0;right:0;background:var(--card);border-top:1px solid var(--line);display:flex;gap:8px;justify-content:center;padding:9px 10px;z-index:35;flex-wrap:wrap}
   .toast{position:fixed;bottom:64px;left:50%;transform:translateX(-50%);background:var(--sage-d);color:#fff;padding:7px 16px;border-radius:20px;font-size:.8rem;opacity:0;transition:opacity .3s;z-index:60;pointer-events:none}
   .toast.show{opacity:1}
   .overlay{position:fixed;inset:0;background:rgba(45,38,25,.55);display:none;align-items:center;justify-content:center;padding:14px;z-index:80}
