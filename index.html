@@ -218,7 +218,7 @@ function nextPaymentCard(testId){
   return h('div',{class:'card','data-testid':testId||null},h('h2',{},'⏰ Próximo vencimento'),h('p',{class:'hint'},next.forn+' · parcela '+next.numero+' · '+next.date.toLocaleDateString('pt-BR')+' · '+formatMoney(next.valor)));
 }
 function generateInstallments(p){ var qtd=Math.max(0,parseInt(p.parcelasQtd,10)||0), first=p.primeiroVencimento?new Date(p.primeiroVencimento+'T12:00:00'):null, base=Math.max(0,paymentTotal(p)-paymentEntry(p)); if(!qtd||!first||!paymentTotal(p))return false; if((p.parcelasDetalhes||[]).some(function(x){return x.status==='Pago';}))return false; var cents=Math.round(base*100), each=Math.floor(cents/qtd); p.parcelasDetalhes=[]; for(var i=0;i<qtd;i++){var d=new Date(first);d.setMonth(d.getMonth()+i);var value=(i===qtd-1?cents-each*(qtd-1):each)/100;p.parcelasDetalhes.push({numero:i+1,vencimento:d.toISOString().slice(0,10),valor:formatMoney(value),status:'Pendente',dataPagamento:''});} return true; }
-function dynamicTaskText(text){ if(text.indexOf('Definir estilo, nº de convidados')===0)return 'Definir estilo, nº de convidados ('+(DB.convidadosPrevistos||0)+') e orçamento (meta '+formatMoney(DB.meta)+' / teto '+formatMoney(DB.teto)+')'; return text; }
+function dynamicTaskText(text){ if(text.indexOf('Definir estilo, nº de convidados')===0)return 'Definir estilo e prioridades do casamento'; return text; }
 function ta(o,k,ph){ var e=h('textarea',{class:'f',placeholder:ph||'',oninput:function(){o[k]=e.value;saveD();}}); e.value=o[k]==null?'':o[k]; return e; }
 function sel(o,k,opts,onch){ var s=h('select',{class:'f',onchange:function(){o[k]=s.value;save();if(onch)onch();}}); opts.forEach(function(op){ var x=h('option',{value:op},op===''?'—':op); if((o[k]==null?'':o[k])===op)x.selected=true; s.appendChild(x); }); return s; }
 function cb(o,k,onch){ var c=h('input',{type:'checkbox',onchange:function(){o[k]=c.checked;save();if(onch)onch();}}); c.checked=!!o[k]; return c; }
@@ -241,7 +241,7 @@ function migrateRecords(items,prefix){ return (items||[]).map(function(item){ re
 function normalizeWeddingContent(data,defaults){
   var changed=false;
   ['mensagens','preferenciasNoivos'].forEach(function(key){ if(!data[key]||typeof data[key]!=='object'){data[key]=JSON.parse(JSON.stringify(defaults[key]));changed=true;} else Object.keys(defaults[key]).forEach(function(field){if(data[key][field]==null){data[key][field]=defaults[key][field];changed=true;}}); });
-  (data.cronograma||[]).forEach(function(phase){(phase.tarefas||[]).forEach(function(task){if(task.t==='Fechar o buffet com degustação e contrato (parrilla + costela fogo de chão)'){task.t='Fechar buffet, degustação e contrato';changed=true;}});});
+  (data.cronograma||[]).forEach(function(phase){(phase.tarefas||[]).forEach(function(task){if((task.t||'').indexOf('Definir estilo, nº de convidados')===0){task.t='Definir estilo e prioridades do casamento';changed=true;}if(task.t==='Fechar o buffet com degustação e contrato (parrilla + costela fogo de chão)'){task.t='Fechar buffet, degustação e contrato';changed=true;}});});
   (data.diad||[]).forEach(function(item){if(item.ativ==='Início do jantar (parrilla / costela fogo de chão)'){item.ativ='Início do jantar';changed=true;}});
   return changed;
 }
@@ -299,7 +299,7 @@ function defaultDB(){ return {
   CAT('22. Hospedagem','',['Suíte dos noivos','Hotel p/ convidados de fora','Bloqueio de quartos / desconto','Café da manhã','Transfer do hotel'])
  ],
  cronograma:[
-  {fase:'12+ meses antes (até mai/2026)',tarefas:[ck('Definir estilo, nº de convidados (~60) e orçamento (meta R$30 mil / teto R$60 mil)'),ck('Montar lista preliminar de convidados'),ck('Contratar a assessoria / cerimonial e alinhar expectativas'),ck('Visitar e reservar o espaço de eventos (contrato + sinal)'),ck('Confirmar a data com o espaço: 15/05/2027 (sábado)')]},
+  {fase:'12+ meses antes (até mai/2026)',tarefas:[ck('Definir estilo e prioridades do casamento'),ck('Montar lista preliminar de convidados'),ck('Contratar a assessoria / cerimonial e alinhar expectativas'),ck('Visitar e reservar o espaço de eventos (contrato + sinal)'),ck('Confirmar a data com o espaço: 15/05/2027 (sábado)')]},
   {fase:'10 a 12 meses (jun–ago/2026)',tarefas:[ck('Fechar buffet, degustação e contrato'),ck('Contratar fotografia e vídeo'),ck('Definir padrinhos e madrinhas'),ck('Reservar DJ / música')]},
   {fase:'8 a 10 meses (set–out/2026)',tarefas:[ck('Contratar decoração e flores'),ck('Escolher vestido da noiva e traje do noivo (iniciar)'),ck('Definir identidade visual / design dos convites'),ck('Contratar celebrante (civil / religioso)')]},
   {fase:'6 a 8 meses (nov–dez/2026)',tarefas:[ck('Degustar e fechar bolo e doces'),ck('Fechar bebidas / bar'),ck('Fazer teste de beleza (cabelo e maquiagem)'),ck('Pesquisar e reservar a lua de mel')]},
@@ -537,7 +537,7 @@ function optBlock(cat,o,i){
     h('div',{class:'oh',style:'justify-content:flex-end'},h('div',{style:'display:flex;gap:5px;flex-wrap:wrap'},h('button',{class:'btn s mini',onclick:function(){cat.opcaoEscolhida===i?unchooseSupplierOption(cat):chooseSupplierOption(cat,o,i);}},cat.opcaoEscolhida===i?'Desfazer escolha':'Escolher esta opção'),h('button',{class:'btn del mini',onclick:function(){ if(cat.opcoes.length<=1)return; cat.opcoes.splice(i,1); save(); renderFornecedores(); }},'remover'))),
     h('div',{class:'grid2'}, field('Fornecedor',tf(o,'nome','Nome')), field('Contato',tf(o,'contato','Tel / @ / site'))),
     h('div',{class:'grid2'},field('Cobrança',sel(o,'tipoCobranca',['fechado','porPessoa'],function(){save();renderFornecedores();})),field(o.tipoCobranca==='porPessoa'?'Valor por pessoa':'Valor (R$)',moneyInput(o,o.tipoCobranca==='porPessoa'?'valorUnitario':'valor','0'))),
-    o.tipoCobranca==='porPessoa'?h('p',{class:'hint'},'Estimativa: '+formatMoney(pn(o.valorUnitario)*pn(DB.convidadosPrevistos))+' para '+(DB.convidadosPrevistos||0)+' convidados'):null,
+    o.tipoCobranca==='porPessoa'?h('p',{class:'hint','data-testid':'supplier-per-person-hint'},'Estimativa: '+formatMoney(pn(o.valorUnitario)*pn(DB.convidadosPrevistos))+' · Base: '+(DB.convidadosPrevistos||0)+' convidados previstos da aba Convidados. Alterações nessa quantidade atualizam o cálculo.'):null,
     field('Complementos do que inclui', ta(o,'inclui','Adicione algo que não esteja no checklist')),
     includedSummary,included,visit,contract,critical
   );
@@ -609,6 +609,7 @@ function renderPagamentos(){
     var row=h('div',{class:'opt'},h('div',{class:'oh'},r.forn||'Fornecedor',h('span',{},formatMoney(total)+' · saldo '+formatMoney(balance))),h('div',{class:'grid2'},field('Fornecedor',tf(r,'forn','Fornecedor')),field('Modalidade',modalidade)),h('div',{style:'display:flex;gap:8px;flex-wrap:wrap;margin-top:7px'},h('button',{class:'btn s mini',onclick:function(){row._details.classList.toggle('open');}},'Parcelas'),h('button',{class:'btn del mini',onclick:function(){DB.pagamentos.splice(i,1);save();renderPagamentos();}},'×')));
     var details=h('div',{class:'acc-b'}); row._details=details;
     details.appendChild(h('div',{class:'grid2'},field('Cobrança',sel(r,'tipoCobranca',['fechado','porPessoa'],function(){save();renderPagamentos();})),field(r.tipoCobranca==='porPessoa'?'Valor por pessoa':'Valor total',moneyInput(r,r.tipoCobranca==='porPessoa'?'valorUnitario':'total','0',function(){renderPagamentos();}))));
+    if(r.tipoCobranca==='porPessoa')details.appendChild(h('p',{class:'hint','data-testid':'payment-per-person-hint'},'Total estimado: '+formatMoney(paymentTotal(r))+' · Base: '+(DB.convidadosPrevistos||0)+' convidados previstos da aba Convidados. Alterações nessa quantidade atualizam o financeiro.'));
     var entradaInput=moneyInput(r,'entradaValor','0',function(){renderPagamentos();}); entradaInput.setAttribute('aria-label','Entrada');
     var entradaStatus=sel(r,'entradaStatus',['Pendente','Pago'],function(){r.entradaDataPagamento=r.entradaStatus==='Pago'?(r.entradaDataPagamento||new Date().toISOString().slice(0,10)):'';save();renderPagamentos();}); entradaStatus.setAttribute('aria-label','Status da entrada');
     details.appendChild(h('div',{class:'grid2'},field('Entrada',entradaInput),field('Tipo entrada',sel(r,'entradaTipo',['valor','percentual'],function(){save();renderPagamentos();})),field('Status da entrada',entradaStatus)));
