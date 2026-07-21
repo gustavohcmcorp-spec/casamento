@@ -873,7 +873,22 @@ function makeSyncService(db,ref,onValue,set){
   var root=ref(db,'casamento/shared'), busy=false;
   function outbox(){ try{return JSON.parse(localStorage.getItem(OUTBOX_KEY)||'[]');}catch(e){return [];} }
   function store(items){ try{localStorage.setItem(OUTBOX_KEY,JSON.stringify(items));}catch(e){canStore=false;} }
-  async function flush(){ if(busy)return; var items=outbox(); if(!items.length)return; busy=true; try{ await set(root,items[items.length-1]); store([]); setSyncMessage('Sincronizado'); }catch(error){ setSyncMessage('Offline — alterações pendentes'); }finally{busy=false;} }
+  async function flush(){
+    if(busy)return;
+    busy=true;
+    try{
+      while(true){
+        var items=outbox();
+        if(!items.length)break;
+        var snapshot=items[items.length-1],sent=JSON.stringify(snapshot);
+        await set(root,snapshot);
+        var after=outbox(),latest=after[after.length-1];
+        store(latest&&JSON.stringify(latest)!==sent?[latest]:[]);
+      }
+      setSyncMessage('Sincronizado');
+    }catch(error){ setSyncMessage('Offline — alterações pendentes'); }
+    finally{busy=false;}
+  }
   onValue(root,function(snapshot){ if(snapshot.exists()&&!outbox().length){ var migrated=migrateDB(snapshot.val()); DB=migrated.data; try{localStorage.setItem(KEY,JSON.stringify(DB));}catch(e){} showTab('inicio'); if(migrated.changed)set(root,DB).catch(function(){setSyncMessage('Offline — migração pendente');}); } });
   window.addEventListener('online',flush);
   return {queueSnapshot:function(snapshot){ var items=outbox(); items.push(snapshot); store(items.slice(-20)); flush(); },flush:flush};
