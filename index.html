@@ -71,6 +71,10 @@
   .guest-list-card{padding:12px}
   .guest-table table{min-width:1650px;table-layout:fixed}
   .guest-table .guest-people{min-width:0}.guest-table .guest-people details{min-width:0}.guest-table .guest-people .field{min-width:0}
+  @media(min-width:621px){
+    .guest-table th{position:relative}.guest-col-resize{position:absolute;top:0;right:-4px;width:8px;height:100%;cursor:col-resize;z-index:3}
+    .guest-col-resize:hover,.guest-col-resize:focus{background:rgba(97,115,90,.24);outline:none}
+  }
   .guest-action-set{display:flex;flex-direction:column;align-items:flex-start;gap:6px}.guest-action-set .btn{white-space:nowrap}
   .prog{height:12px;background:var(--soft);border-radius:8px;overflow:hidden;margin:8px 0}
   .prog>i{display:block;height:100%;background:linear-gradient(90deg,var(--sage),var(--gold))}
@@ -196,7 +200,7 @@ function fmt(n){ return n.toLocaleString('pt-BR',{style:'currency',currency:'BRL
 function formatMoney(v){ return pn(v).toLocaleString('pt-BR',{style:'currency',currency:'BRL',minimumFractionDigits:2,maximumFractionDigits:2}); }
 function toast(m){ var t=document.getElementById('toast'); t.textContent=m; t.className='toast show'; clearTimeout(toast._t); toast._t=setTimeout(function(){t.className='toast';},1400); }
 
-var KEY='casamento_2027_goiania_v2', OUTBOX_KEY='casamento_2027_outbox_v1', DB, saveT, canStore=true, syncService=null;
+var KEY='casamento_2027_goiania_v2', OUTBOX_KEY='casamento_2027_outbox_v1', WEDDING_MAP_URL='https://maps.app.goo.gl/iP4X9CYTqkDAZXWH7', DB, saveT, canStore=true, syncService=null;
 function save(){ try{ localStorage.setItem(KEY,JSON.stringify(DB)); }catch(e){ canStore=false; } if(syncService)syncService.queueSnapshot(DB); updateHeader(); }
 function saveD(){ clearTimeout(saveT); saveT=setTimeout(save,350); }
 function load(){ try{ var s=localStorage.getItem(KEY); if(s)return JSON.parse(s); }catch(e){ canStore=false; } return null; }
@@ -412,7 +416,7 @@ function defaultDB(){ return {
  ],
  pagamentos:['Espaço','Buffet','Bebidas / bar','Bolo e doces','DJ / música','Som e iluminação','Pista de dança','Flores','Decoração','Carpete / entrada','Fotografia','Vídeo','Cabine 360','Celebrante','Convites / papelaria','Beleza','Traje da noiva','Traje do noivo','Alianças','Assessoria / cerimonial','Transporte','Lembrancinhas','Hospedagem'].map(function(f){return {forn:f,total:'',entrada:'',parc:'',venc:'',pago:''};}),
  convidados:[{nome:'',grupo:'',ad:'',cr:'',conf:'Pendente',mesa:'',obs:''},{nome:'',grupo:'',ad:'',cr:'',conf:'Pendente',mesa:'',obs:''}],
- mensagens:{convite:'Olá, {{nome}}! 💍\n\nEstamos muito felizes em convidar você para o nosso casamento.\n\nData: {{data}}\nLocal: {{local}}\n{{mapa}}\n\nPedimos, por gentileza, que confirme sua presença{{prazo_rsvp}}. Esperamos você!',lembrete:'Olá, {{nome}}! 💍\n\nPassando para lembrar da confirmação de presença para o nosso casamento{{prazo_rsvp}}.\n\nData: {{data}}\nLocal: {{local}}\n{{mapa}}\n\nObrigado!'},
+ mensagens:{convite:'Olá, {{nomes_convidados}}! 💍✨\n\nChegou o momento de começarmos uma nova história — e ela não estaria completa sem você ao nosso lado!\n\n*Gleicianne & Gustavo* têm a alegria de convidar você para o nosso casamento.\n\n📅 *Data:* {{data}}\n🕓 *Horário:* a partir das {{hora}} (chegue com antecedência para não perder nenhum momento especial!)\n📍 *Local:* {{local}}\n{{mapa}}\n\nPedimos, com carinho, que confirme sua presença{{prazo_rsvp}}. Mal podemos esperar para celebrar esse dia com você! 🥂❤️',lembrete:'Olá, {{nomes_convidados}}! 💍\n\nPassando para lembrar da confirmação de presença para o nosso casamento{{prazo_rsvp}}.\n\n📅 *Data:* {{data}}\n🕓 *Horário:* {{hora}}\n📍 *Local:* {{local}}\n{{mapa}}\n\nEsperamos celebrar com vocês!'},
  preferenciasNoivos:{buffet:'Churrasco parrilla, costela fogo de chão, entradas de frios e massa (macarrão). Avaliar outras opções conforme o orçamento.'},
  essenciais:{
   kit:[ck('Costura: agulha, linhas (branca/preta), alfinetes, botões extras, fita dupla-face de tecido'),ck('Tesourinha e alfinete de segurança'),ck('Retoque: batom/gloss, pó compacto, grampos e presilhas, elástico de cabelo, spray fixador, esmalte transparente'),ck('Saúde: analgésico, antiácido, anti-inflamatório, band-aid, colírio, absorvente, remédio de uso pessoal'),ck('Praticidades: bala de menta, mini desodorante, lenços, cotonete, protetor de bolha, canudo (beber sem borrar o batom)'),ck('Power bank + cabo de celular'),ck('Guarda-chuva / capa (mesmo em maio)')],
@@ -722,7 +726,11 @@ function renderPagamentos(){
 }
 
 function guestMessageTemplates(){ var defaults=defaultDB().mensagens; DB.mensagens=Object.assign({},defaults,DB.mensagens||{}); return DB.mensagens; }
-function resolveGuestMessage(template,g){ var place=[DB.local,DB.cidade].filter(Boolean).join(' — '), deadline=DB.prazoRSVP?(' até '+new Date(DB.prazoRSVP+'T12:00:00').toLocaleDateString('pt-BR')):'', values={nome:g.nome||'querido(a) convidado(a)',data:weddingDateShort()+(DB.hora?(' às '+DB.hora):''),hora:DB.hora||'',local:place||'a definir',mapa:DB.local?('Mapa: https://www.google.com/maps/search/?api=1&query='+encodeURIComponent(place)):'',prazo_rsvp:deadline}; return (template||'').replace(/\{\{(nome|data|hora|local|mapa|prazo_rsvp)\}\}/g,function(_,key){return values[key];}).replace(/\n{3,}/g,'\n\n').trim(); }
+function joinGuestNames(names){ names=(names||[]).map(function(name){return (name||'').trim();}).filter(Boolean); if(!names.length)return '';if(names.length===1)return names[0];if(names.length===2)return names[0]+' e '+names[1];return names.slice(0,-1).join(', ')+' e '+names[names.length-1]; }
+function normalizedGuestName(name){return (name||'').trim().toLocaleLowerCase('pt-BR').replace(/\s+/g,' ');}
+function guestNamesForMessage(g){var names=(g.pessoas||[]).map(function(person){return person.nome;}).filter(function(name){return (name||'').trim();});return names.length?names:[g.nome||''];}
+function guestCompanionsForMessage(g){var names=guestNamesForMessage(g),main=normalizedGuestName(g.nome),index=names.findIndex(function(name){return normalizedGuestName(name)===main;});if(index>=0)names.splice(index,1);return names;}
+function resolveGuestMessage(template,g){ var place=[DB.local,DB.cidade].filter(Boolean).join(' — '), deadline=DB.prazoRSVP?(' até '+new Date(DB.prazoRSVP+'T12:00:00').toLocaleDateString('pt-BR')):'', names=joinGuestNames(guestNamesForMessage(g)),companions=joinGuestNames(guestCompanionsForMessage(g)), values={nome:g.nome||names||'querido(a) convidado(a)',nomes_convidados:names||g.nome||'querido(a) convidado(a)',acompanhantes:companions,data:weddingDateShort(),hora:DB.hora||'',local:place||'a definir',mapa:WEDDING_MAP_URL,prazo_rsvp:deadline}; return (template||'').replace(/\{\{(nome|nomes_convidados|acompanhantes|data|hora|local|mapa|prazo_rsvp)\}\}/g,function(_,key){return values[key];}).replace(/\n{3,}/g,'\n\n').trim(); }
 function prepareWhatsAppInvite(g,reminder){
   var phone=(g.telefone||'').replace(/\D/g,'');
   if(!phone){toast('Informe o WhatsApp do convidado antes de preparar o convite.');return;}
@@ -761,6 +769,15 @@ function guestMobileCard(g,index){ var count=guestCounts(g),body=h('div',{class:
 function guestNamesForPrint(g){ var names=(g.pessoas||[]).map(function(person){return (person.nome||'').trim()||'Não informado';}); return names.join(', '); }
 function familyTotals(){ return (DB.convidados||[]).reduce(function(totals,g){var family=normalizeFamily(g.grupo),count=guestCounts(g).total;if(family)totals[family]=(totals[family]||0)+count;return totals;},{}); }
 function familyLabel(family){ return family==='Noiva'?'Família Noiva':family==='Noivo'?'Família Noivo':family; }
+var DEFAULT_GUEST_COLUMN_WIDTHS=[210,120,90,135,145,155,155,160,150,310,165];
+function guestColumnWidths(){var saved=DB.guestColumnWidths||[];return DEFAULT_GUEST_COLUMN_WIDTHS.map(function(width,index){var candidate=pn(saved[index]);return candidate>=70?candidate:width;});}
+function setGuestColumnWidth(index,width){if(index<0||index>=DEFAULT_GUEST_COLUMN_WIDTHS.length)return;var widths=guestColumnWidths();widths[index]=Math.max(70,Math.round(width));DB.guestColumnWidths=widths;save();}
+function startGuestColumnResize(event,index){if(window.innerWidth<=620)return;event.preventDefault();var handle=event.currentTarget,table=handle.closest('table'),column=table.querySelectorAll('col')[index],startX=event.clientX,startWidth=column.getBoundingClientRect().width;
+  function move(e){column.style.width=Math.max(70,startWidth+e.clientX-startX)+'px';}
+  function up(e){setGuestColumnWidth(index,startWidth+e.clientX-startX);document.removeEventListener('mousemove',move);document.removeEventListener('mouseup',up);}
+  document.addEventListener('mousemove',move);document.addEventListener('mouseup',up);
+}
+function resizableTh(label,index){return h('th',{},label,h('span',{class:'guest-col-resize',tabindex:'0','aria-label':'Ajustar largura da coluna '+label,onmousedown:function(event){startGuestColumnResize(event,index);}},''));}
 
 function renderConvidados(){
   var el=q('convidados'); el.innerHTML='';
@@ -786,9 +803,9 @@ function renderConvidados(){
     Object.keys(families).length?h('div',{class:'family-totals','data-testid':'family-totals'},h('span',{class:'mini'},'Famílias:'),Object.keys(families).sort(function(a,b){var order={Noiva:0,Noivo:1};return (order[a]??9)-(order[b]??9)||a.localeCompare(b,'pt-BR');}).map(function(family){return h('span',{class:'chip n'},familyLabel(family)+' · '+families[family]+' pessoa'+(families[family]===1?'':'s'));})):null,
     h('p',{class:'hint'},'Crianças até 5 anos: isentas. Crianças de 6 a 10 e com 11+ podem ter regras distintas por fornecedor. Preencha os nomes de acompanhantes em “Pessoas convidadas”.'),
     h('div',{'data-testid':'rsvp-progress'},h('div',{class:'mini'},conf+' de '+(DB.convidadosPrevistos||0)+' confirmações · '+(pn(DB.convidadosPrevistos)?Math.min(100,Math.round(conf/pn(DB.convidadosPrevistos)*100)):0)+'%'),h('div',{class:'prog'},h('i',{style:'width:'+(pn(DB.convidadosPrevistos)?Math.min(100,Math.round(conf/pn(DB.convidadosPrevistos)*100)):0)+'%'}))));
-  var messageSettings=h('details',{},h('summary',{},'Personalizar mensagens do WhatsApp'),h('p',{class:'hint'},'Os textos servem para todos. Preserve {{nome}} para inserir cada convidado; também há {{data}}, {{hora}}, {{local}}, {{mapa}} e {{prazo_rsvp}}.'),field('Mensagem de convite',ta(templates,'convite','Mensagem do convite')),field('Mensagem de lembrete',ta(templates,'lembrete','Mensagem de lembrete'))); card.appendChild(messageSettings); el.appendChild(card);
+  var messageSettings=h('details',{},h('summary',{},'Personalizar mensagens do WhatsApp'),h('p',{class:'hint'},'As mensagens são individuais para cada família. Use {{nomes_convidados}} para citar todos os nomes preenchidos em “Pessoas convidadas”; {{acompanhantes}} lista os demais nomes sem o titular e pode ser usado junto com {{nome}}. Também há {{data}}, {{hora}}, {{local}}, {{mapa}} e {{prazo_rsvp}}.'),field('Mensagem de convite',ta(templates,'convite','Mensagem do convite')),field('Mensagem de lembrete',ta(templates,'lembrete','Mensagem de lembrete'))); card.appendChild(messageSettings); el.appendChild(card);
   var guestListCard=h('div',{class:'card screen-only guest-list-card'}),guestCards=h('div',{class:'guest-cards'}); DB.convidados.forEach(function(g,i){guestCards.appendChild(guestMobileCard(g,i));}); guestListCard.appendChild(guestCards);
-  var guestColumns=h('colgroup',{},h('col',{style:'width:210px'}),h('col',{style:'width:120px'}),h('col',{style:'width:90px'}),h('col',{style:'width:135px'}),h('col',{style:'width:145px'}),h('col',{style:'width:155px'}),h('col',{style:'width:155px'}),h('col',{style:'width:160px'}),h('col',{style:'width:150px'}),h('col',{style:'width:310px'}),h('col',{style:'width:165px'}));
+  var guestColumns=h('colgroup',{},guestColumnWidths().map(function(width){return h('col',{style:'width:'+width+'px'});}));
   var tb=h('tbody',{});
   DB.convidados.forEach(function(g,i){
     var tr=h('tr',{}, tdIn(g,'nome','guest-name'), tdIn(g,'grupo','guest-family'), guestCountCell(g,'ad','guest-count'), guestCountCell(g,'crAte5','guest-under-five'), guestCountCell(g,'cr6a10','guest-six-to-ten'), guestCountCell(g,'cr11mais','guest-eleven-plus'),
@@ -799,7 +816,7 @@ function renderConvidados(){
       h('td',{class:'guest-actions'},h('div',{class:'guest-action-set'},h('button',{class:'btn s mini',onclick:function(){prepareWhatsAppInvite(g);}},'Preparar WhatsApp'),g.conf==='Pendente'?h('button',{class:'btn mini',onclick:function(){prepareWhatsAppInvite(g,true);}},'Lembrete RSVP'):null,h('button',{class:'btn del mini',onclick:function(){DB.convidados.splice(i,1);save();renderConvidados();}},'Remover'))));
     tb.appendChild(tr);
   });
-  guestListCard.appendChild(h('div',{class:'twrap guest-table'}, h('table',{}, guestColumns,h('thead',{}, h('tr',{}, th('Nome'),th('Família'),th('Adultos'),th('Crianças até 5 anos'),th('Crianças de 6 a 10 anos'),th('Crianças com 11 anos ou mais'),th('WhatsApp'),th('Convite'),th('Confirmação'),th('Pessoas convidadas'),th('Ações'))), tb)));
+  guestListCard.appendChild(h('div',{class:'twrap guest-table'}, h('table',{}, guestColumns,h('thead',{}, h('tr',{}, resizableTh('Nome',0),resizableTh('Família',1),resizableTh('Adultos',2),resizableTh('Crianças até 5 anos',3),resizableTh('Crianças de 6 a 10 anos',4),resizableTh('Crianças com 11 anos ou mais',5),resizableTh('WhatsApp',6),resizableTh('Convite',7),resizableTh('Confirmação',8),resizableTh('Pessoas convidadas',9),resizableTh('Ações',10))), tb)));
   guestListCard.appendChild(h('button',{class:'btn p mini addrow',onclick:function(){ DB.convidados.push({nome:'',grupo:'',ad:'',crAte5:'',cr6a10:'',cr11mais:'',convite:'Não enviado',conf:'Pendente',mesa:'',obs:''}); save(); renderConvidados(); }},'+ convidado'));
   el.appendChild(guestListCard);
   var printBody=h('tbody',{});DB.convidados.forEach(function(g){var count=guestCounts(g);printBody.appendChild(h('tr',{},h('td',{},g.nome||'Não informado'),h('td',{},count.adults),h('td',{},count.childrenUnder5),h('td',{},count.children6To10),h('td',{},count.children11Plus),h('td',{},guestNamesForPrint(g))));});
