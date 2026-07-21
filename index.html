@@ -629,20 +629,20 @@ function renderPagamentos(){
     var modalidade=sel(r,'modalidadeEscolhida',['parcelado','pix'],function(){save();renderPagamentos();}); modalidade.setAttribute('aria-label','Modalidade de pagamento');
     var row=h('div',{class:'opt'},h('div',{class:'oh'},r.forn||'Fornecedor',h('span',{},formatMoney(total)+' · saldo '+formatMoney(balance))),h('div',{class:'grid2'},field('Fornecedor',tf(r,'forn','Fornecedor')),field('Modalidade',modalidade)),h('div',{style:'display:flex;gap:8px;flex-wrap:wrap;margin-top:7px'},h('button',{class:'btn s mini',onclick:function(){row._details.classList.toggle('open');}},'Parcelas'),h('button',{class:'btn del mini',onclick:function(){DB.pagamentos.splice(i,1);save();renderPagamentos();}},'×')));
     var details=h('div',{class:'acc-b'}); row._details=details;
-    details.appendChild(h('div',{class:'grid2'},field('Cobrança',sel(r,'tipoCobranca',['fechado','porPessoa'],function(){save();renderPagamentos();})),field(r.tipoCobranca==='porPessoa'?'Valor por pessoa':'Valor total',moneyInput(r,r.tipoCobranca==='porPessoa'?'valorUnitario':'total','0',function(){renderPagamentos();}))));
+    details.appendChild(h('div',{class:'grid2'},field('Cobrança',sel(r,'tipoCobranca',['fechado','porPessoa'],function(){save();renderPagamentos();})),field(r.tipoCobranca==='porPessoa'?'Valor por pessoa':'Valor total',moneyInput(r,r.tipoCobranca==='porPessoa'?'valorUnitario':'total','0'))));
     if(r.tipoCobranca==='porPessoa')details.appendChild(h('p',{class:'hint','data-testid':'payment-per-person-hint'},'Total estimado: '+formatMoney(paymentTotal(r))+' · Base: '+(DB.convidadosPrevistos||0)+' convidados previstos da aba Convidados. Alterações nessa quantidade atualizam o financeiro.'));
-    var entradaInput=moneyInput(r,'entradaValor','0',function(){renderPagamentos();}); entradaInput.setAttribute('aria-label','Entrada');
+    var entradaInput=moneyInput(r,'entradaValor','0'); entradaInput.setAttribute('aria-label','Entrada');
     var entradaStatus=sel(r,'entradaStatus',['Pendente','Pago'],function(){r.entradaDataPagamento=r.entradaStatus==='Pago'?(r.entradaDataPagamento||new Date().toISOString().slice(0,10)):'';save();renderPagamentos();}); entradaStatus.setAttribute('aria-label','Status da entrada');
     details.appendChild(h('div',{class:'grid2'},field('Entrada',entradaInput),field('Tipo entrada',sel(r,'entradaTipo',['valor','percentual'],function(){save();renderPagamentos();})),field('Status da entrada',entradaStatus)));
     details.appendChild(h('div',{class:'grid2'},field('Nº parcelas',tf(r,'parcelasQtd','10')),field('1º vencimento',tf(r,'primeiroVencimento','', 'date'))));
     details.appendChild(h('button',{class:'btn s mini',onclick:function(){if(!generateInstallments(r))toast('Informe total, parcelas e primeiro vencimento; parcelas pagas não são recriadas.');save();renderPagamentos();}},'Gerar parcelas'));
     if(r.modalidadeEscolhida==='pix'){
       var pixPaid=cb(r,'pixPago',function(){save();renderPagamentos();}); pixPaid.setAttribute('aria-label','Pix pago');
-      details.appendChild(h('div',{class:'grid2',style:'margin-top:8px'},field('Desconto Pix (%)',tf(r,'pixDescontoPercentual','0','text',function(){renderPagamentos();})),h('div',{class:'hint',style:'padding-top:23px'},'Pix à vista: '+formatMoney(paymentPix(r))),field('Pix pago',pixPaid)));
+      details.appendChild(h('div',{class:'grid2',style:'margin-top:8px'},field('Desconto Pix (%)',tf(r,'pixDescontoPercentual','0','text')),h('div',{class:'hint',style:'padding-top:23px'},'Pix à vista: '+formatMoney(paymentPix(r))),field('Pix pago',pixPaid)));
     }
     (r.parcelasDetalhes||[]).forEach(function(p){
       var due=tf(p,'vencimento','', 'date'); due.setAttribute('aria-label','Vencimento da parcela '+p.numero);
-      var amount=moneyInput(p,'valor','0',function(){save();renderPagamentos();}); amount.setAttribute('aria-label','Valor da parcela '+p.numero);
+      var amount=moneyInput(p,'valor','0'); amount.setAttribute('aria-label','Valor da parcela '+p.numero);
       var status=sel(p,'status',['Pendente','Pago'],function(){p.dataPagamento=p.status==='Pago'?(p.dataPagamento||new Date().toISOString().slice(0,10)):'';save();renderPagamentos();}); status.setAttribute('aria-label','Situação da parcela '+p.numero);
       details.appendChild(h('div',{class:'inc'},h('div',{class:'lbl'},'Parcela '+p.numero+'/'+r.parcelasDetalhes.length),h('div',{class:'grid2'},field('Vencimento',due),field('Valor',amount),field('Situação',status))));
     });
