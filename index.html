@@ -192,7 +192,7 @@ function save(){ try{ localStorage.setItem(KEY,JSON.stringify(DB)); }catch(e){ c
 function saveD(){ clearTimeout(saveT); saveT=setTimeout(save,350); }
 function load(){ try{ var s=localStorage.getItem(KEY); if(s)return JSON.parse(s); }catch(e){ canStore=false; } return null; }
 
-function tf(o,k,ph,type,afterInput){ var e=h('input',{class:'f',type:type||'text',placeholder:ph||'',oninput:function(){o[k]=e.value;saveD();if(afterInput)afterInput();}}); e.value=o[k]==null?'':o[k]; return e; }
+function tf(o,k,ph,type,afterInput,saveImmediately){ var e=h('input',{class:'f',type:type||'text',placeholder:ph||'',oninput:function(){o[k]=e.value;if(saveImmediately)save();else saveD();if(afterInput)afterInput();}}); e.value=o[k]==null?'':o[k]; return e; }
 function moneyInput(o,k,ph,afterInput){ var e=h('input',{class:'f',type:'text',inputmode:'decimal',placeholder:ph||'',oninput:function(){o[k]=e.value;saveD();if(afterInput)afterInput();},onblur:function(){ if(e.value!==''){ e.value=formatMoney(e.value); o[k]=e.value; save(); if(afterInput)afterInput(); } }}); e.value=o[k]?formatMoney(o[k]):''; return e; }
 function ensurePayment(p){ var payment=Object.assign({tipoCobranca:'fechado',valorUnitario:'',entradaTipo:'valor',entradaValor:'',entradaStatus:'Pendente',entradaDataPagamento:'',parcelasQtd:'',primeiroVencimento:'',parcelasDetalhes:[],pixDescontoPercentual:'',modalidadeEscolhida:'parcelado',formaPagamento:'',condicaoPagamento:'',avistaPago:null},p||{}); if(!payment.id)payment.id=makeId('pag'); if(!payment.formaPagamento)payment.formaPagamento=payment.modalidadeEscolhida==='pix'?'pix':'a definir'; if(!payment.condicaoPagamento)payment.condicaoPagamento=(payment.modalidadeEscolhida==='parcelado'||(payment.parcelasDetalhes||[]).length||payment.parcelasQtd)?'parcelado':'avista'; if(payment.avistaPago==null&&payment.pixPago!=null)payment.avistaPago=payment.pixPago; return payment; }
 function guestPlanningBase(){ var listed=(DB.convidados||[]).reduce(function(sum,guest){return sum+guestCounts(guest).total;},0); return Math.max(pn(DB.convidadosPrevistos),listed); }
@@ -688,7 +688,7 @@ function renderConvidados(){
   var el=q('convidados'); el.innerHTML='';
   var total=0,adults=0,children=0,conf=0,pend=0,enviados=0,templates=guestMessageTemplates();
   DB.convidados.forEach(function(g){ var count=guestCounts(g),p=count.total; total+=p;adults+=count.adults;children+=count.children; if(g.conf==='Confirmado')conf+=p; if(g.conf==='Pendente')pend++; if(g.convite==='Enviado'||g.convite==='Lembrete enviado')enviados+=p; });
-  var planned=tf(DB,'convidadosPrevistos','60','text',updateBudgetSummaryText); planned.setAttribute('data-testid','guests-planned');
+  var planned=tf(DB,'convidadosPrevistos','60','text',updateBudgetSummaryText,true); planned.setAttribute('data-testid','guests-planned');
   var rsvpDeadline=tf(DB,'prazoRSVP','', 'date');
   var card=h('div',{class:'card screen-only'}, h('h2',{},'📋 Convidados & RSVP'),
     h('div',{class:'grid2'},field('Convidados previstos',planned),field('Prazo para RSVP',rsvpDeadline)),
