@@ -860,7 +860,7 @@ function downloadJSON(code){ try{ var b=new Blob([code],{type:'application/json'
 var syncMessage='Salvo localmente';
 var FIREBASE_CONFIG={apiKey:'AIzaSyB0rj1a7XUBlkU5fM3uCHJr3953VbvAV4k',authDomain:'casamento-gustavo-gleicianne.firebaseapp.com',projectId:'casamento-gustavo-gleicianne',databaseURL:'https://casamento-gustavo-gleicianne-default-rtdb.firebaseio.com',appId:'1:952886965649:web:8cf186cbda84a906e59630'};
 var AUTH_PROFILES={gustavo:'gustavohenriquecm@gmail.com',gleicianne:'gleicianecarvalho3@gmail.com',nanny:'maurynanny@gmail.com'};
-var selectedProfile='';
+var selectedProfile='',firebaseSession=null,authSessionStarted=false,sessionRestoreStarted=false;
 function startApp(){ document.getElementById('login').hidden=true; buildTabs(); updateHeader(); showTab('inicio'); }
 function setLoginMessage(message){ document.getElementById('login-message').textContent=message; }
 function setupLogin(){
@@ -869,6 +869,36 @@ function setupLogin(){
   document.getElementById('login-password').onkeydown=function(event){if(event.key==='Enter')login();};
 }
 function setSyncMessage(message){ syncMessage=message; if(!document.getElementById('login').hidden){ setLoginMessage(message); } updateHeader(); }
+function isAuthorizedUser(user){ return !!(user&&Object.keys(AUTH_PROFILES).some(function(profile){return AUTH_PROFILES[profile]===user.email;})); }
+function startAuthenticatedSession(user,db,dbModule){
+  if(!isAuthorizedUser(user)||authSessionStarted)return false;
+  authSessionStarted=true;
+  syncService=makeSyncService(db,dbModule.ref,dbModule.onValue,dbModule.set);
+  startApp();
+  syncService.flush();
+  return true;
+}
+async function getFirebaseSession(){
+  if(firebaseSession)return firebaseSession;
+  var appModule=await import('https://www.gstatic.com/firebasejs/12.15.0/firebase-app.js');
+  var authModule=await import('https://www.gstatic.com/firebasejs/12.15.0/firebase-auth.js');
+  var dbModule=await import('https://www.gstatic.com/firebasejs/12.15.0/firebase-database.js');
+  var app=appModule.initializeApp(FIREBASE_CONFIG),auth=authModule.getAuth(app),db=dbModule.getDatabase(app);
+  firebaseSession={authModule:authModule,dbModule:dbModule,auth:auth,db:db};
+  return firebaseSession;
+}
+async function restoreSession(){
+  if(sessionRestoreStarted)return;
+  sessionRestoreStarted=true;
+  setLoginMessage('Restaurando acesso…');
+  try{
+    var session=await getFirebaseSession();
+    session.authModule.onAuthStateChanged(session.auth,function(user){
+      if(startAuthenticatedSession(user,session.db,session.dbModule))return;
+      setLoginMessage(user?'Acesso não autorizado neste painel.':'Escolha quem está acessando.');
+    });
+  }catch(error){ setLoginMessage('Não foi possível restaurar o acesso. Selecione seu perfil e informe a senha.'); }
+}
 function makeSyncService(db,ref,onValue,set){
   var root=ref(db,'casamento/shared'), busy=false;
   function outbox(){ try{return JSON.parse(localStorage.getItem(OUTBOX_KEY)||'[]');}catch(e){return [];} }
@@ -899,18 +929,15 @@ async function login(){
   if(!password){ setLoginMessage('Informe a senha.'); return; }
   setLoginMessage('Verificando acesso…');
   try{
-    var appModule=await import('https://www.gstatic.com/firebasejs/12.15.0/firebase-app.js');
-    var authModule=await import('https://www.gstatic.com/firebasejs/12.15.0/firebase-auth.js');
-    var dbModule=await import('https://www.gstatic.com/firebasejs/12.15.0/firebase-database.js');
-    var app=appModule.initializeApp(FIREBASE_CONFIG), auth=authModule.getAuth(app), db=dbModule.getDatabase(app);
-    await authModule.signInWithEmailAndPassword(auth,AUTH_PROFILES[selectedProfile],password);
-    syncService=makeSyncService(db,dbModule.ref,dbModule.onValue,dbModule.set);
-    startApp(); syncService.flush();
+    var session=await getFirebaseSession();
+    if(session.authModule.setPersistence&&session.authModule.browserLocalPersistence)await session.authModule.setPersistence(session.auth,session.authModule.browserLocalPersistence);
+    var credential=await session.authModule.signInWithEmailAndPassword(session.auth,AUTH_PROFILES[selectedProfile],password);
+    startAuthenticatedSession(credential.user,session.db,session.dbModule);
   }catch(error){ setLoginMessage('Não foi possível entrar. Confira o nome escolhido e a senha.'); }
 }
 setupLogin();
 document.getElementById('print-current').onclick=function(){window.print();};
-if(isLocalTestMode(location.hostname,location.search)) startApp();
+if(isLocalTestMode(location.hostname,location.search)) startApp(); else restoreSession();
 </script>
 </body>
 </html>
