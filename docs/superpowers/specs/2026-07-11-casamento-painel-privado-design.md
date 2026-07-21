@@ -1,7 +1,7 @@
 # Painel privado de planejamento de casamento — desenho
 
 Data: 11 de julho de 2026  
-Evento: 15 de maio de 2027, Goiânia/GO  
+Evento: 29 de maio de 2027, Goiânia/GO  
 Repositório: `gustavohcmcorp-spec/casamento`
 
 ## 1. Objetivo
