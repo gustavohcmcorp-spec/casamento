@@ -18,6 +18,7 @@
   h1,h2,h3,.serif{font-family:"Cormorant Garamond",Georgia,"Times New Roman",serif}
   h2,h3{font-weight:600;margin:0}
   .wrap{max-width:840px;margin:0 auto;padding:0 12px 48px}
+  .wrap.wide{max-width:1120px}
   .top{position:sticky;top:0;z-index:30;background:rgba(84,99,74,.97);color:#fff;backdrop-filter:blur(6px);text-align:center;padding:7px 10px;font-size:.8rem;letter-spacing:.3px}
   .top b{font-family:Georgia,serif}
   .top .d{color:var(--gold-l)}
@@ -26,6 +27,7 @@
   .tabs button{flex:0 0 auto;border:1px solid var(--line);background:var(--card);color:var(--muted);border-radius:22px;padding:7px 14px;font-size:.82rem;font-weight:600;white-space:nowrap;cursor:pointer}
   .tabs button.on{background:var(--sage);color:#fff;border-color:var(--sage);box-shadow:0 2px 8px rgba(111,128,100,.35)}
   .page-actions{max-width:840px;margin:10px auto 0;padding:0 12px;display:flex;justify-content:flex-end}
+  .page-actions.wide{max-width:1120px}
   .print-only,.guest-cards{display:none}
   .tab{display:none;padding-top:14px}
   .tab.active{display:block}
@@ -64,6 +66,7 @@
   .kpi .k{background:var(--cream);border:1px solid var(--line);border-radius:13px;padding:11px;text-align:center}
   .kpi .k .v{font-size:1.15rem;font-weight:700;font-family:Georgia,serif;color:var(--sage-d)}
   .kpi .k .t{font-size:.66rem;text-transform:uppercase;letter-spacing:.4px;color:var(--muted)}
+  .family-totals{display:flex;align-items:center;gap:6px;flex-wrap:wrap;margin:10px 0 6px;padding:9px 10px;background:var(--soft);border-radius:10px}
   .prog{height:12px;background:var(--soft);border-radius:8px;overflow:hidden;margin:8px 0}
   .prog>i{display:block;height:100%;background:linear-gradient(90deg,var(--sage),var(--gold))}
   .acc-h{width:100%;background:none;border:none;display:flex;align-items:center;gap:9px;padding:3px 0;cursor:pointer;text-align:left;font-family:Georgia,serif;font-size:1.05rem;color:var(--ink)}
@@ -118,15 +121,16 @@
     .guest-table{display:none}.guest-cards{display:block}
     .guest-card{border:1px solid var(--line);border-radius:12px;background:var(--cream);margin:10px 0;padding:0 12px}
     .guest-card>summary{cursor:pointer;list-style:none;padding:12px 0;display:grid;grid-template-columns:1fr auto;gap:3px 10px;color:var(--sage-d);font-weight:700}
-    .guest-card>summary::-webkit-details-marker{display:none}.guest-card>summary:after{content:'▸';grid-column:2;grid-row:1/3;align-self:center}.guest-card[open]>summary:after{transform:rotate(90deg)}
+  .guest-card>summary::-webkit-details-marker{display:none}.guest-card>summary:after{content:'▸';grid-column:2;grid-row:1/3;align-self:center}.guest-card[open]>summary:after{transform:rotate(90deg)}
     .guest-card-body{border-top:1px solid var(--line);padding:12px 0}.guest-card-actions{display:flex;gap:7px;flex-wrap:wrap;margin-top:8px}
+    .guest-counts{grid-template-columns:1fr 1fr}.guest-counts .field:last-child{grid-column:1/-1}
   }
   @page{size:A4 portrait;margin:10mm}
   @media print{
     .top,.tabs,.page-actions,.addrow,.btn,.toast,.overlay,.screen-only,.guest-cards{display:none!important}
     body{font-size:10pt;background:#fff;color:#111}.wrap{max-width:none;padding:0}.tab{display:none!important;padding:0}.tab.active{display:block!important}
     .print-only{display:block!important}.card{box-shadow:none;border:none;padding:0;margin:0}.hero{box-shadow:none;background:#54634a!important;-webkit-print-color-adjust:exact;print-color-adjust:exact}
-    .guest-print table{min-width:0;table-layout:fixed;font-size:9pt}.guest-print th,.guest-print td{padding:5px;border:1px solid #777}.guest-print th:nth-child(1){width:29%}.guest-print th:nth-child(2),.guest-print th:nth-child(3){width:7%}.guest-print th:nth-child(4){width:57%}
+    .guest-print table{min-width:0;table-layout:fixed;font-size:9pt}.guest-print th,.guest-print td{padding:5px;border:1px solid #777}.guest-print th:nth-child(1){width:28%}.guest-print th:nth-child(2),.guest-print th:nth-child(3),.guest-print th:nth-child(4){width:8%}.guest-print th:nth-child(5){width:48%}
     .guest-print tr{break-inside:avoid}.guest-print h1{font-size:18pt;margin:0 0 3mm}.guest-print .print-meta{margin-bottom:5mm}
   }
 </style>
@@ -260,9 +264,26 @@ function replaceLegacyWeddingDates(value){
   walk(value);
   return changed;
 }
+function normalizeFamily(value){
+  var family=(value||'').trim();
+  if(family==='F | Noivo')return 'Noivo';
+  if(family==='F | Noiva')return 'Noiva';
+  return family;
+}
+function normalizeGuestData(data){
+  var changed=false;
+  (data.convidados||[]).forEach(function(guest){
+    var family=normalizeFamily(guest.grupo);
+    if(family!==(guest.grupo||'')){guest.grupo=family;changed=true;}
+    if(guest.crAte5==null){guest.crAte5='';changed=true;}
+    if(guest.crMais5==null){guest.crMais5=guest.cr==null?'':guest.cr;changed=true;}
+  });
+  return changed;
+}
 function normalizeWeddingContent(data,defaults){
   var changed=false;
   if(replaceLegacyWeddingDates(data))changed=true;
+  if(normalizeGuestData(data))changed=true;
   ['mensagens','preferenciasNoivos'].forEach(function(key){ if(!data[key]||typeof data[key]!=='object'){data[key]=JSON.parse(JSON.stringify(defaults[key]));changed=true;} else Object.keys(defaults[key]).forEach(function(field){if(data[key][field]==null){data[key][field]=defaults[key][field];changed=true;}}); });
   (data.cronograma||[]).forEach(function(phase){(phase.tarefas||[]).forEach(function(task){if((task.t||'').indexOf('Definir estilo, nº de convidados')===0){task.t='Definir estilo e prioridades do casamento';changed=true;}if(task.t==='Fechar o buffet com degustação e contrato (parrilla + costela fogo de chão)'){task.t='Fechar buffet, degustação e contrato';changed=true;}});});
   (data.diad||[]).forEach(function(item){if(item.ativ==='Início do jantar (parrilla / costela fogo de chão)'){item.ativ='Início do jantar';changed=true;}});
@@ -396,7 +417,7 @@ function defaultDB(){ return {
 
 function allEss(){ var a=[]; ['contingencias','kit','semana','levar','gorjetas'].forEach(function(g){ (DB.essenciais[g]||[]).forEach(function(x){a.push(x);}); }); return a; }
 function countTasks(){ var t=0,dn=0; DB.cronograma.forEach(function(f){ f.tarefas.forEach(function(x){t++;if(x.done)dn++;}); }); allEss().forEach(function(x){t++;if(x.done)dn++;}); return {t:t,dn:dn}; }
-function confirmados(){ var n=0; DB.convidados.forEach(function(g){ if(g.conf==='Confirmado') n+=(pn(g.ad)+pn(g.cr))||1; }); return n; }
+function confirmados(){ var n=0; DB.convidados.forEach(function(g){ if(g.conf==='Confirmado') n+=guestCounts(g).total; }); return n; }
 function days(){ return Math.max(0,Math.ceil((weddingDate()-new Date())/86400000)); }
 function initials(){ var a=(DB.noiva||'').trim(), b=(DB.noivo||'').trim(); var x=a?a[0].toUpperCase():'', y=b?b[0].toUpperCase():''; return (x&&y)?(x+'&'+y):(x||y||'♡'); }
 function coupleName(){ return (DB.noiva||DB.noivo)?((DB.noiva||'Noiva')+' & '+(DB.noivo||'Noivo')):'Nosso Casamento'; }
@@ -457,7 +478,7 @@ function renderInicio(){
   else if(teto&&contratado>teto*.9)preventive.push('O valor comprometido está próximo do teto do orçamento.');
   var pendingSuppliers=(DB.categorias||[]).filter(function(cat){return !cat.naoTera&&(cat.opcaoEscolhida===undefined||cat.opcaoEscolhida===null);}).length;
   if(pendingSuppliers)preventive.push(pendingSuppliers+' fornecedores ainda não foram escolhidos.');
-  var rsvpConfirmed=(DB.convidados||[]).reduce(function(sum,g){return sum+(g.conf==='Confirmado'?((pn(g.ad)+pn(g.cr))||1):0);},0);
+  var rsvpConfirmed=(DB.convidados||[]).reduce(function(sum,g){return sum+(g.conf==='Confirmado'?guestCounts(g).total:0);},0);
   if(pn(DB.convidadosPrevistos)&&rsvpConfirmed<pn(DB.convidadosPrevistos))preventive.push('RSVP ainda incompleto: '+rsvpConfirmed+' de '+DB.convidadosPrevistos+' confirmações.');
   var invitesNotSent=(DB.convidados||[]).filter(function(g){return g.nome&&(!g.convite||g.convite==='Não enviado');}).length;
   var invitesPrepared=(DB.convidados||[]).filter(function(g){return g.nome&&g.convite==='Preparado no WhatsApp';}).length;
@@ -675,19 +696,21 @@ function prepareWhatsAppInvite(g,reminder){
   window.open('https://wa.me/'+phone+'?text='+encodeURIComponent(text),'_blank');
 }
 
-function guestCounts(g){ var adults=pn(g.ad),children=pn(g.cr); if(!adults&&!children)adults=1; return {adults:adults,children:children,total:adults+children}; }
-function ensureGuestPeople(g){ var counts=guestCounts(g), current=g.pessoas||[], desired=[],index=0; for(var a=0;a<counts.adults;a++){var adult=current.filter(function(person){return person.tipo==='Adulto';})[a]||{}; desired.push({tipo:'Adulto',nome:adult.nome||(index===0?g.nome:'')});index++;} for(var c=0;c<counts.children;c++){var child=current.filter(function(person){return person.tipo==='Criança';})[c]||{}; desired.push({tipo:'Criança',nome:child.nome||''});} g.pessoas=desired; return desired; }
+function guestCounts(g){ var adults=pn(g.ad),childrenUnder5=pn(g.crAte5),children6Plus=pn(g.crMais5==null?g.cr:g.crMais5),children=childrenUnder5+children6Plus; if(!adults&&!children)adults=1; return {adults:adults,childrenUnder5:childrenUnder5,children6Plus:children6Plus,children:children,total:adults+children}; }
+function ensureGuestPeople(g){ var counts=guestCounts(g), current=g.pessoas||[], desired=[],index=0,legacyChildren=current.filter(function(person){return person.tipo==='Criança';}); for(var a=0;a<counts.adults;a++){var adult=current.filter(function(person){return person.tipo==='Adulto';})[a]||{}; desired.push({tipo:'Adulto',nome:adult.nome||(index===0?g.nome:'')});index++;} for(var u=0;u<counts.childrenUnder5;u++){var childUnder5=current.filter(function(person){return person.tipo==='Criança até 5';})[u]||{}; desired.push({tipo:'Criança até 5',nome:childUnder5.nome||''});} for(var c=0;c<counts.children6Plus;c++){var child6Plus=current.filter(function(person){return person.tipo==='Criança 6+';})[c]||legacyChildren[c]||{}; desired.push({tipo:'Criança 6+',nome:child6Plus.nome||''});} g.pessoas=desired; return desired; }
 function guestCountCell(g,key){ var td=h('td',{class:'num'}),input=h('input',{type:'text',inputmode:'numeric',oninput:function(){g[key]=input.value;saveD();},onblur:function(){ensureGuestPeople(g);save();renderConvidados();}}); input.value=g[key]||'';td.appendChild(input);return td; }
 function guestCountInput(g,key){ var input=h('input',{class:'f',type:'text',inputmode:'numeric',oninput:function(){g[key]=input.value;saveD();},onblur:function(){ensureGuestPeople(g);save();renderConvidados();}});input.value=g[key]||'';return input; }
 function guestPeopleEditor(g){ var people=ensureGuestPeople(g),details=h('details',{},h('summary',{},'Pessoas convidadas · '+people.length)); people.forEach(function(person){var number=people.filter(function(p){return p.tipo===person.tipo;}).indexOf(person)+1,input=h('input',{class:'f',placeholder:person.tipo+' '+number,oninput:function(){person.nome=input.value;saveD();}});input.value=person.nome||'';details.appendChild(field(person.tipo+' '+number,input));});var note=h('input',{class:'f',placeholder:'Observação da família',oninput:function(){g.obs=note.value;saveD();}});note.value=g.obs||'';details.appendChild(field('Observação',note));return details; }
 function guestPeopleCell(g){ return h('td',{},guestPeopleEditor(g)); }
-function guestMobileCard(g,index){ var count=guestCounts(g),body=h('div',{class:'guest-card-body'},h('div',{class:'grid2'},field('Nome / família',tf(g,'nome','Nome ou família')),field('Grupo',tf(g,'grupo','Família / amigos')),field('Adultos',guestCountInput(g,'ad')),field('Crianças',guestCountInput(g,'cr'))),field('WhatsApp',tf(g,'telefone','DDD + número')),h('div',{class:'grid2'},field('Convite',sel(g,'convite',['Não enviado','Preparado no WhatsApp','Enviado','Lembrete enviado'],renderConvidados)),field('Confirmação',sel(g,'conf',['Pendente','Confirmado','Não vai'],renderConvidados)),field('Mesa',tf(g,'mesa','Mesa'))),guestPeopleEditor(g)); var actions=h('div',{class:'guest-card-actions'},h('button',{class:'btn s mini',onclick:function(){prepareWhatsAppInvite(g);}},'Preparar WhatsApp'),g.conf==='Pendente'?h('button',{class:'btn mini',onclick:function(){prepareWhatsAppInvite(g,true);}},'Lembrete RSVP'):null,h('button',{class:'btn del mini',onclick:function(){DB.convidados.splice(index,1);save();renderConvidados();}},'Remover'));body.appendChild(actions);return h('details',{class:'guest-card'},h('summary',{},h('span',{},g.nome||'Convidado sem nome'),h('span',{class:'mini'},count.adults+' Ad · '+count.children+' Cr'),h('span',{class:'mini'},g.conf||'Pendente')),body); }
+function guestMobileCard(g,index){ var count=guestCounts(g),body=h('div',{class:'guest-card-body'},h('div',{class:'grid2'},field('Nome / família',tf(g,'nome','Nome ou família')),field('Família',tf(g,'grupo','Noivo, Noiva, amigos...'))),h('div',{class:'grid3 guest-counts'},field('Adultos',guestCountInput(g,'ad')),field('Até 5',guestCountInput(g,'crAte5')),field('6+',guestCountInput(g,'crMais5'))),field('WhatsApp',tf(g,'telefone','DDD + número')),h('div',{class:'grid2'},field('Convite',sel(g,'convite',['Não enviado','Preparado no WhatsApp','Enviado','Lembrete enviado'],renderConvidados)),field('Confirmação',sel(g,'conf',['Pendente','Confirmado','Não vai'],renderConvidados)),field('Mesa',tf(g,'mesa','Mesa'))),guestPeopleEditor(g)); var actions=h('div',{class:'guest-card-actions'},h('button',{class:'btn s mini',onclick:function(){prepareWhatsAppInvite(g);}},'Preparar WhatsApp'),g.conf==='Pendente'?h('button',{class:'btn mini',onclick:function(){prepareWhatsAppInvite(g,true);}},'Lembrete RSVP'):null,h('button',{class:'btn del mini',onclick:function(){DB.convidados.splice(index,1);save();renderConvidados();}},'Remover'));body.appendChild(actions);return h('details',{class:'guest-card'},h('summary',{},h('span',{},g.nome||'Convidado sem nome'),h('span',{class:'mini'},count.adults+' Ad · '+count.childrenUnder5+' até 5 · '+count.children6Plus+' 6+'),h('span',{class:'mini'},g.conf||'Pendente')),body); }
 function guestNamesForPrint(g){ var names=ensureGuestPeople(g).map(function(person){return (person.nome||'').trim()||'Não informado';}); return names.join(', '); }
+function familyTotals(){ return (DB.convidados||[]).reduce(function(totals,g){var family=normalizeFamily(g.grupo),count=guestCounts(g).total;if(family)totals[family]=(totals[family]||0)+count;return totals;},{}); }
 
 function renderConvidados(){
   var el=q('convidados'); el.innerHTML='';
-  var total=0,adults=0,children=0,conf=0,pend=0,enviados=0,templates=guestMessageTemplates();
-  DB.convidados.forEach(function(g){ var count=guestCounts(g),p=count.total; total+=p;adults+=count.adults;children+=count.children; if(g.conf==='Confirmado')conf+=p; if(g.conf==='Pendente')pend++; if(g.convite==='Enviado'||g.convite==='Lembrete enviado')enviados+=p; });
+  var total=0,adults=0,children=0,childrenUnder5=0,children6Plus=0,conf=0,pend=0,enviados=0,templates=guestMessageTemplates(),families;
+  DB.convidados.forEach(function(g){ var count=guestCounts(g),p=count.total; total+=p;adults+=count.adults;children+=count.children;childrenUnder5+=count.childrenUnder5;children6Plus+=count.children6Plus; if(g.conf==='Confirmado')conf+=p; if(g.conf==='Pendente')pend++; if(g.convite==='Enviado'||g.convite==='Lembrete enviado')enviados+=p; });
+  families=familyTotals();
   var planned=tf(DB,'convidadosPrevistos','60','text',updateBudgetSummaryText,true); planned.setAttribute('data-testid','guests-planned');
   var rsvpDeadline=tf(DB,'prazoRSVP','', 'date');
   var card=h('div',{class:'card screen-only'}, h('h2',{},'📋 Convidados & RSVP'),
@@ -696,18 +719,21 @@ function renderConvidados(){
       h('div',{class:'k','data-testid':'guest-total'}, h('div',{class:'v'},total), h('div',{class:'t'},'na lista')),
       h('div',{class:'k','data-testid':'guest-adults'}, h('div',{class:'v'},adults), h('div',{class:'t'},'adultos')),
       h('div',{class:'k','data-testid':'guest-children'}, h('div',{class:'v'},children), h('div',{class:'t'},'crianças')),
+      h('div',{class:'k','data-testid':'guest-children-under-5'}, h('div',{class:'v'},childrenUnder5), h('div',{class:'t'},'até 5 · isentas')),
+      h('div',{class:'k','data-testid':'guest-children-6-plus'}, h('div',{class:'v'},children6Plus), h('div',{class:'t'},'6+ · cotação')),
       h('div',{class:'k'}, h('div',{class:'v'},enviados), h('div',{class:'t'},'convites enviados')),
       h('div',{class:'k'}, h('div',{class:'v'},conf), h('div',{class:'t'},'confirmadas')),
       h('div',{class:'k'}, h('div',{class:'v'},DB.convidadosPrevistos||'0'), h('div',{class:'t'},'previstos')),
       h('div',{class:'k'}, h('div',{class:'v'},pend), h('div',{class:'t'},'pendentes'))
     ),
-    h('p',{class:'hint'},'Ad = adultos, Cr = crianças. Preencha os nomes de acompanhantes em “Pessoas convidadas”.'),
+    Object.keys(families).length?h('div',{class:'family-totals','data-testid':'family-totals'},h('span',{class:'mini'},'Famílias:'),Object.keys(families).sort().map(function(family){return h('span',{class:'chip n'},family+' · '+families[family]+' pessoa'+(families[family]===1?'':'s'));})):null,
+    h('p',{class:'hint'},'Até 5 anos: isentas. 6+: referência para cotação. Preencha os nomes de acompanhantes em “Pessoas convidadas”.'),
     h('div',{'data-testid':'rsvp-progress'},h('div',{class:'mini'},conf+' de '+(DB.convidadosPrevistos||0)+' confirmações · '+(pn(DB.convidadosPrevistos)?Math.min(100,Math.round(conf/pn(DB.convidadosPrevistos)*100)):0)+'%'),h('div',{class:'prog'},h('i',{style:'width:'+(pn(DB.convidadosPrevistos)?Math.min(100,Math.round(conf/pn(DB.convidadosPrevistos)*100)):0)+'%'}))));
   var messageSettings=h('details',{},h('summary',{},'Personalizar mensagens do WhatsApp'),h('p',{class:'hint'},'Os textos servem para todos. Preserve {{nome}} para inserir cada convidado; também há {{data}}, {{hora}}, {{local}}, {{mapa}} e {{prazo_rsvp}}.'),field('Mensagem de convite',ta(templates,'convite','Mensagem do convite')),field('Mensagem de lembrete',ta(templates,'lembrete','Mensagem de lembrete'))); card.appendChild(messageSettings);
   var guestCards=h('div',{class:'guest-cards'}); DB.convidados.forEach(function(g,i){guestCards.appendChild(guestMobileCard(g,i));}); card.appendChild(guestCards);
   var tb=h('tbody',{});
   DB.convidados.forEach(function(g,i){
-    var tr=h('tr',{}, tdIn(g,'nome'), tdIn(g,'grupo'), guestCountCell(g,'ad'), guestCountCell(g,'cr'),
+    var tr=h('tr',{}, tdIn(g,'nome'), tdIn(g,'grupo'), guestCountCell(g,'ad'), guestCountCell(g,'crAte5'), guestCountCell(g,'crMais5'),
       tdIn(g,'telefone'),
       h('td',{}, sel(g,'convite',['Não enviado','Preparado no WhatsApp','Enviado','Lembrete enviado'],function(){renderConvidados();})),
       h('td',{}, sel(g,'conf',['Pendente','Confirmado','Não vai'],function(){renderConvidados();})),
@@ -716,11 +742,11 @@ function renderConvidados(){
       h('td',{}, h('button',{class:'btn del mini',onclick:function(){DB.convidados.splice(i,1);save();renderConvidados();}},'×')));
     tb.appendChild(tr);
   });
-  card.appendChild(h('div',{class:'twrap guest-table'}, h('table',{style:'min-width:900px'}, h('thead',{}, h('tr',{}, th('Nome / família'),th('Grupo'),th('Ad'),th('Cr'),th('WhatsApp'),th('Convite'),th('Confirmação'),th('Mesa'),th('Pessoas convidadas'),th(''),th(''))), tb)));
-  card.appendChild(h('button',{class:'btn p mini addrow',onclick:function(){ DB.convidados.push({nome:'',grupo:'',ad:'',cr:'',convite:'Não enviado',conf:'Pendente',mesa:'',obs:''}); save(); renderConvidados(); }},'+ convidado'));
+  card.appendChild(h('div',{class:'twrap guest-table'}, h('table',{style:'min-width:1040px'}, h('thead',{}, h('tr',{}, th('Nome / família'),th('Família'),th('Ad'),th('Até 5'),th('6+'),th('WhatsApp'),th('Convite'),th('Confirmação'),th('Mesa'),th('Pessoas convidadas'),th(''),th(''))), tb)));
+  card.appendChild(h('button',{class:'btn p mini addrow',onclick:function(){ DB.convidados.push({nome:'',grupo:'',ad:'',crAte5:'',crMais5:'',convite:'Não enviado',conf:'Pendente',mesa:'',obs:''}); save(); renderConvidados(); }},'+ convidado'));
   el.appendChild(card);
-  var printBody=h('tbody',{});DB.convidados.forEach(function(g){var count=guestCounts(g);printBody.appendChild(h('tr',{},h('td',{},g.nome||'Não informado'),h('td',{},count.adults),h('td',{},count.children),h('td',{},guestNamesForPrint(g))));});
-  el.appendChild(h('div',{class:'print-only guest-print'},h('h1',{},'Lista de convidados — Portaria'),h('div',{class:'print-meta'},'Casamento · '+weddingDateShort()+' · '+total+' pessoas ('+adults+' adultos e '+children+' crianças)'),h('table',{},h('thead',{},h('tr',{},th('Nome / família'),th('Ad'),th('Cr'),th('Pessoas convidadas'))),printBody)));
+  var printBody=h('tbody',{});DB.convidados.forEach(function(g){var count=guestCounts(g);printBody.appendChild(h('tr',{},h('td',{},g.nome||'Não informado'),h('td',{},count.adults),h('td',{},count.childrenUnder5),h('td',{},count.children6Plus),h('td',{},guestNamesForPrint(g))));});
+  el.appendChild(h('div',{class:'print-only guest-print'},h('h1',{},'Lista de convidados — Portaria'),h('div',{class:'print-meta'},'Casamento · '+weddingDateShort()+' · '+total+' pessoas ('+adults+' adultos, '+childrenUnder5+' até 5 e '+children6Plus+' com 6+)'),h('table',{},h('thead',{},h('tr',{},th('Nome / família'),th('Ad'),th('Até 5'),th('6+'),th('Pessoas convidadas'))),printBody)));
 }
 
 function renderNoivos(){
@@ -762,6 +788,8 @@ function buildTabs(){ var t=document.getElementById('tabs'); t.innerHTML=''; TAB
 function showTab(name){
   document.querySelectorAll('.tab').forEach(function(s){ s.classList.toggle('active', s.getAttribute('data-tab')===name); });
   document.querySelectorAll('#tabs button').forEach(function(b){ var active=b.getAttribute('data-t')===name; b.classList.toggle('on',active); if(active&&b.scrollIntoView)b.scrollIntoView({behavior:'smooth',block:'nearest',inline:'center'}); });
+  document.querySelector('.wrap').classList.toggle('wide',name==='convidados');
+  document.querySelector('.page-actions').classList.toggle('wide',name==='convidados');
   var tabInfo=TABS.filter(function(item){return item[0]===name;})[0]; document.getElementById('print-current').textContent='🖨 Imprimir '+(tabInfo?tabInfo[1]:'página');
   RENDER[name](); updateHeader(); window.scrollTo(0,0);
 }
