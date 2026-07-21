@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="theme-color" content="#54634a">
-<title>Plano de Casamento — 15/05/2027 · Goiânia</title>
+<title>Plano de Casamento · Goiânia</title>
 <style>
   :root{
     --bg:#f0ece6; --card:#fffdf9; --ink:#34332f; --muted:#706d66;
@@ -229,6 +229,10 @@ function opt(){ return {nome:'',contato:'',valor:'',inclui:''}; }
 function ck(t){ return {t:t,done:false,obs:''}; }
 
 var SCHEMA_VERSION=3;
+var WEDDING_DATE_ISO='2027-05-29';
+function weddingDate(){ var p=WEDDING_DATE_ISO.split('-').map(Number); return new Date(p[0],p[1]-1,p[2]); }
+function weddingDateShort(){ var p=WEDDING_DATE_ISO.split('-'); return p[2]+'/'+p[1]+'/'+p[0]; }
+function weddingDateLong(){ var date=weddingDate(); return date.toLocaleDateString('pt-BR',{day:'2-digit',month:'long',year:'numeric'})+' · '+date.toLocaleDateString('pt-BR',{weekday:'long'}); }
 function makeId(prefix){
   var value=(globalThis.crypto&&globalThis.crypto.randomUUID)?globalThis.crypto.randomUUID():(Date.now().toString(36)+'_'+Math.random().toString(36).slice(2));
   return prefix+'_'+value;
@@ -238,8 +242,24 @@ function withMeta(item,prefix){
   return Object.assign({},copy,{id:copy.id||makeId(prefix),createdAt:copy.createdAt||now,updatedAt:copy.updatedAt||now,archivedAt:copy.archivedAt||null});
 }
 function migrateRecords(items,prefix){ return (items||[]).map(function(item){ return withMeta(item,prefix); }); }
+function replaceLegacyWeddingDates(value){
+  var changed=false;
+  function walk(current){
+    if(typeof current==='string'){
+      var next=current.replace(/15\/05\/2027/g,weddingDateShort()).replace(/15 de maio de 2027/g,'29 de maio de 2027');
+      if(next!==current)changed=true;
+      return next;
+    }
+    if(Array.isArray(current)){current.forEach(function(item,index){current[index]=walk(item);});return current;}
+    if(current&&typeof current==='object'){Object.keys(current).forEach(function(key){current[key]=walk(current[key]);});}
+    return current;
+  }
+  walk(value);
+  return changed;
+}
 function normalizeWeddingContent(data,defaults){
   var changed=false;
+  if(replaceLegacyWeddingDates(data))changed=true;
   ['mensagens','preferenciasNoivos'].forEach(function(key){ if(!data[key]||typeof data[key]!=='object'){data[key]=JSON.parse(JSON.stringify(defaults[key]));changed=true;} else Object.keys(defaults[key]).forEach(function(field){if(data[key][field]==null){data[key][field]=defaults[key][field];changed=true;}}); });
   (data.cronograma||[]).forEach(function(phase){(phase.tarefas||[]).forEach(function(task){if((task.t||'').indexOf('Definir estilo, nº de convidados')===0){task.t='Definir estilo e prioridades do casamento';changed=true;}if(task.t==='Fechar o buffet com degustação e contrato (parrilla + costela fogo de chão)'){task.t='Fechar buffet, degustação e contrato';changed=true;}});});
   (data.diad||[]).forEach(function(item){if(item.ativ==='Início do jantar (parrilla / costela fogo de chão)'){item.ativ='Início do jantar';changed=true;}});
@@ -299,7 +319,7 @@ function defaultDB(){ return {
   CAT('22. Hospedagem','',['Suíte dos noivos','Hotel p/ convidados de fora','Bloqueio de quartos / desconto','Café da manhã','Transfer do hotel'])
  ],
  cronograma:[
-  {fase:'12+ meses antes (até mai/2026)',tarefas:[ck('Definir estilo e prioridades do casamento'),ck('Montar lista preliminar de convidados'),ck('Contratar a assessoria / cerimonial e alinhar expectativas'),ck('Visitar e reservar o espaço de eventos (contrato + sinal)'),ck('Confirmar a data com o espaço: 15/05/2027 (sábado)')]},
+  {fase:'12+ meses antes (até mai/2026)',tarefas:[ck('Definir estilo e prioridades do casamento'),ck('Montar lista preliminar de convidados'),ck('Contratar a assessoria / cerimonial e alinhar expectativas'),ck('Visitar e reservar o espaço de eventos (contrato + sinal)'),ck('Confirmar a data com o espaço: '+weddingDateShort()+' (sábado)')]},
   {fase:'10 a 12 meses (jun–ago/2026)',tarefas:[ck('Fechar buffet, degustação e contrato'),ck('Contratar fotografia e vídeo'),ck('Definir padrinhos e madrinhas'),ck('Reservar DJ / música')]},
   {fase:'8 a 10 meses (set–out/2026)',tarefas:[ck('Contratar decoração e flores'),ck('Escolher vestido da noiva e traje do noivo (iniciar)'),ck('Definir identidade visual / design dos convites'),ck('Contratar celebrante (civil / religioso)')]},
   {fase:'6 a 8 meses (nov–dez/2026)',tarefas:[ck('Degustar e fechar bolo e doces'),ck('Fechar bebidas / bar'),ck('Fazer teste de beleza (cabelo e maquiagem)'),ck('Pesquisar e reservar a lua de mel')]},
@@ -308,7 +328,7 @@ function defaultDB(){ return {
   {fase:'2 meses (mar/2027)',tarefas:[ck('Fechar layout das mesas e mapa de assentos'),ck('Montar playlist (tocar / NÃO tocar) para o DJ'),ck('Definir roteiro da cerimônia e da festa'),ck('Reconfirmar todos os contratos e datas de pagamento')]},
   {fase:'1 mês (abr/2027)',tarefas:[ck('Confirmar RSVP final e fechar número de convidados'),ck('Acertar saldos / pagamentos com fornecedores'),ck('Montar o cronograma do dia (minuto a minuto) com a cerimonial'),ck('Ensaio da cerimônia'),ck('Última prova de vestido / traje'),ck('Comprar as alianças (se ainda não)')]},
   {fase:'1 semana antes',tarefas:[ck('Reconfirmar horários com TODOS os fornecedores'),ck('Separar pagamentos e gorjetas em envelopes'),ck('Montar o kit emergência'),ck('Confirmar transporte dos noivos'),ck('Fazer test drive do trajeto até o local'),ck('Conferir documentos e alianças')]},
-  {fase:'Dia 15/05/2027 — Dia D',tarefas:[ck('Entregar cronograma impresso à cerimonial e fornecedores'),ck('Seguir a timeline do dia (aba Dia D)'),ck('Aproveitar! A cerimonial coordena tudo')]},
+  {fase:'Dia '+weddingDateShort()+' — Dia D',tarefas:[ck('Entregar cronograma impresso à cerimonial e fornecedores'),ck('Seguir a timeline do dia (aba Dia D)'),ck('Aproveitar! A cerimonial coordena tudo')]},
   {fase:'Pós-casamento',tarefas:[ck('Devolver itens alugados (traje etc.)'),ck('Pagar saldos e gorjetas pendentes'),ck('Registrar certidão de casamento e atualizar documentos'),ck('Agradecer convidados / enviar fotos'),ck('Acompanhar entrega de álbum e vídeo')]}
  ],
  equipe:[
@@ -374,11 +394,12 @@ function defaultDB(){ return {
 function allEss(){ var a=[]; ['contingencias','kit','semana','levar','gorjetas'].forEach(function(g){ (DB.essenciais[g]||[]).forEach(function(x){a.push(x);}); }); return a; }
 function countTasks(){ var t=0,dn=0; DB.cronograma.forEach(function(f){ f.tarefas.forEach(function(x){t++;if(x.done)dn++;}); }); allEss().forEach(function(x){t++;if(x.done)dn++;}); return {t:t,dn:dn}; }
 function confirmados(){ var n=0; DB.convidados.forEach(function(g){ if(g.conf==='Confirmado') n+=(pn(g.ad)+pn(g.cr))||1; }); return n; }
-function days(){ return Math.max(0,Math.ceil((new Date(2027,4,15)-new Date())/86400000)); }
+function days(){ return Math.max(0,Math.ceil((weddingDate()-new Date())/86400000)); }
 function initials(){ var a=(DB.noiva||'').trim(), b=(DB.noivo||'').trim(); var x=a?a[0].toUpperCase():'', y=b?b[0].toUpperCase():''; return (x&&y)?(x+'&'+y):(x||y||'♡'); }
 function coupleName(){ return (DB.noiva||DB.noivo)?((DB.noiva||'Noiva')+' & '+(DB.noivo||'Noivo')):'Nosso Casamento'; }
 function updateHeader(){
-  document.getElementById('top').innerHTML='<b>'+coupleName()+'</b> · 15/05/2027 · <span class="d">faltam '+days()+' dias</span><span class="sync" data-testid="sync-status">'+syncMessage+'</span>';
+  document.title='Plano de Casamento — '+weddingDateShort()+' · Goiânia';
+  document.getElementById('top').innerHTML='<b>'+coupleName()+'</b> · '+weddingDateShort()+' · <span class="d">faltam '+days()+' dias</span><span class="sync" data-testid="sync-status">'+syncMessage+'</span>';
   setTxt('heroMono',initials()); setTxt('heroNames',coupleName());
   setTxt('heroPlace',(DB.cidade||'Goiânia/GO')+(DB.local?(' · '+DB.local):''));
   setTxt('heroDays',days());
@@ -393,7 +414,7 @@ function renderInicio(){
     h('div',{class:'mono',id:'heroMono'},initials()),
     h('div',{class:'names',id:'heroNames'},coupleName()),
     h('div',{class:'div'}, h('i',{}), '✦', h('i',{})),
-    h('div',{class:'date'},'15 de maio de 2027 · sábado'),
+    h('div',{class:'date'},weddingDateLong()),
     h('div',{class:'place',id:'heroPlace'},(DB.cidade||'Goiânia/GO')+(DB.local?(' · '+DB.local):'')),
     h('div',{class:'cd'}, h('b',{id:'heroDays'},days()), h('span',{},'dias para o grande dia'))
   ));
@@ -575,7 +596,7 @@ function renderEquipe(){
 
 function renderDiaD(){
   var el=q('diad'); el.innerHTML='';
-  var card=h('div',{class:'card'}, h('h2',{},'⏱ Cronograma do dia — 15/05/2027'), h('p',{class:'hint'},'Sugestão de timeline (ajuste os horários). Marque conforme acontece.'));
+  var card=h('div',{class:'card'}, h('h2',{},'⏱ Cronograma do dia — '+weddingDateShort()), h('p',{class:'hint'},'Sugestão de timeline (ajuste os horários). Marque conforme acontece.'));
   var tb=h('tbody',{});
   DB.diad.forEach(function(r,i){
     var tr=h('tr',{}, h('td',{style:'text-align:center'}, cb(r,'done')), tdIn(r,'hora'), tdIn(r,'ativ'), tdIn(r,'resp'),
@@ -633,7 +654,7 @@ function renderPagamentos(){
 }
 
 function guestMessageTemplates(){ var defaults=defaultDB().mensagens; DB.mensagens=Object.assign({},defaults,DB.mensagens||{}); return DB.mensagens; }
-function resolveGuestMessage(template,g){ var place=[DB.local,DB.cidade].filter(Boolean).join(' — '), deadline=DB.prazoRSVP?(' até '+new Date(DB.prazoRSVP+'T12:00:00').toLocaleDateString('pt-BR')):'', values={nome:g.nome||'querido(a) convidado(a)',data:'15/05/2027'+(DB.hora?(' às '+DB.hora):''),hora:DB.hora||'',local:place||'a definir',mapa:DB.local?('Mapa: https://www.google.com/maps/search/?api=1&query='+encodeURIComponent(place)):'',prazo_rsvp:deadline}; return (template||'').replace(/\{\{(nome|data|hora|local|mapa|prazo_rsvp)\}\}/g,function(_,key){return values[key];}).replace(/\n{3,}/g,'\n\n').trim(); }
+function resolveGuestMessage(template,g){ var place=[DB.local,DB.cidade].filter(Boolean).join(' — '), deadline=DB.prazoRSVP?(' até '+new Date(DB.prazoRSVP+'T12:00:00').toLocaleDateString('pt-BR')):'', values={nome:g.nome||'querido(a) convidado(a)',data:weddingDateShort()+(DB.hora?(' às '+DB.hora):''),hora:DB.hora||'',local:place||'a definir',mapa:DB.local?('Mapa: https://www.google.com/maps/search/?api=1&query='+encodeURIComponent(place)):'',prazo_rsvp:deadline}; return (template||'').replace(/\{\{(nome|data|hora|local|mapa|prazo_rsvp)\}\}/g,function(_,key){return values[key];}).replace(/\n{3,}/g,'\n\n').trim(); }
 function prepareWhatsAppInvite(g,reminder){
   var phone=(g.telefone||'').replace(/\D/g,'');
   if(!phone){toast('Informe o WhatsApp do convidado antes de preparar o convite.');return;}
@@ -687,7 +708,7 @@ function renderConvidados(){
   card.appendChild(h('button',{class:'btn p mini addrow',onclick:function(){ DB.convidados.push({nome:'',grupo:'',ad:'',cr:'',convite:'Não enviado',conf:'Pendente',mesa:'',obs:''}); save(); renderConvidados(); }},'+ convidado'));
   el.appendChild(card);
   var printBody=h('tbody',{});DB.convidados.forEach(function(g){var count=guestCounts(g);printBody.appendChild(h('tr',{},h('td',{},g.nome||'Não informado'),h('td',{},count.adults),h('td',{},count.children),h('td',{},guestNamesForPrint(g))));});
-  el.appendChild(h('div',{class:'print-only guest-print'},h('h1',{},'Lista de convidados — Portaria'),h('div',{class:'print-meta'},'Casamento · 15/05/2027 · '+total+' pessoas ('+adults+' adultos e '+children+' crianças)'),h('table',{},h('thead',{},h('tr',{},th('Nome / família'),th('Ad'),th('Cr'),th('Pessoas convidadas'))),printBody)));
+  el.appendChild(h('div',{class:'print-only guest-print'},h('h1',{},'Lista de convidados — Portaria'),h('div',{class:'print-meta'},'Casamento · '+weddingDateShort()+' · '+total+' pessoas ('+adults+' adultos e '+children+' crianças)'),h('table',{},h('thead',{},h('tr',{},th('Nome / família'),th('Ad'),th('Cr'),th('Pessoas convidadas'))),printBody)));
 }
 
 function renderNoivos(){
@@ -769,7 +790,7 @@ function copyText(txt,ta){
   function ok(){ toast('Copiado!'); } function fb(){ try{ ta.focus(); ta.select(); ta.setSelectionRange(0,999999); document.execCommand('copy'); toast('Copiado!'); }catch(e){ toast('Selecione o texto e copie manualmente.'); } }
   if(navigator.clipboard&&navigator.clipboard.writeText){ navigator.clipboard.writeText(txt).then(ok,fb); } else fb();
 }
-function downloadJSON(code){ try{ var b=new Blob([code],{type:'application/json'}); var a=document.createElement('a'); a.href=URL.createObjectURL(b); a.download='casamento-15-05-2027-backup.json'; a.click(); toast('Arquivo gerado.'); }catch(e){ toast('Use "Copiar código" no celular.'); } }
+function downloadJSON(code){ try{ var b=new Blob([code],{type:'application/json'}); var a=document.createElement('a'); a.href=URL.createObjectURL(b); a.download='casamento-'+WEDDING_DATE_ISO+'-backup.json'; a.click(); toast('Arquivo gerado.'); }catch(e){ toast('Use "Copiar código" no celular.'); } }
 
 var syncMessage='Salvo localmente';
 var FIREBASE_CONFIG={apiKey:'AIzaSyB0rj1a7XUBlkU5fM3uCHJr3953VbvAV4k',authDomain:'casamento-gustavo-gleicianne.firebaseapp.com',projectId:'casamento-gustavo-gleicianne',databaseURL:'https://casamento-gustavo-gleicianne-default-rtdb.firebaseio.com',appId:'1:952886965649:web:8cf186cbda84a906e59630'};
@@ -788,7 +809,7 @@ function makeSyncService(db,ref,onValue,set){
   function outbox(){ try{return JSON.parse(localStorage.getItem(OUTBOX_KEY)||'[]');}catch(e){return [];} }
   function store(items){ try{localStorage.setItem(OUTBOX_KEY,JSON.stringify(items));}catch(e){canStore=false;} }
   async function flush(){ if(busy)return; var items=outbox(); if(!items.length)return; busy=true; try{ await set(root,items[items.length-1]); store([]); setSyncMessage('Sincronizado'); }catch(error){ setSyncMessage('Offline — alterações pendentes'); }finally{busy=false;} }
-  onValue(root,function(snapshot){ if(snapshot.exists()&&!outbox().length){ var migrated=migrateDB(snapshot.val()); DB=migrated.data; try{localStorage.setItem(KEY,JSON.stringify(DB));}catch(e){} showTab('inicio'); } });
+  onValue(root,function(snapshot){ if(snapshot.exists()&&!outbox().length){ var migrated=migrateDB(snapshot.val()); DB=migrated.data; try{localStorage.setItem(KEY,JSON.stringify(DB));}catch(e){} showTab('inicio'); if(migrated.changed)set(root,DB).catch(function(){setSyncMessage('Offline — migração pendente');}); } });
   window.addEventListener('online',flush);
   return {queueSnapshot:function(snapshot){ var items=outbox(); items.push(snapshot); store(items.slice(-20)); flush(); },flush:flush};
 }
