@@ -194,13 +194,13 @@ function load(){ try{ var s=localStorage.getItem(KEY); if(s)return JSON.parse(s)
 
 function tf(o,k,ph,type,afterInput){ var e=h('input',{class:'f',type:type||'text',placeholder:ph||'',oninput:function(){o[k]=e.value;saveD();if(afterInput)afterInput();}}); e.value=o[k]==null?'':o[k]; return e; }
 function moneyInput(o,k,ph,afterInput){ var e=h('input',{class:'f',type:'text',inputmode:'decimal',placeholder:ph||'',oninput:function(){o[k]=e.value;saveD();if(afterInput)afterInput();},onblur:function(){ if(e.value!==''){ e.value=formatMoney(e.value); o[k]=e.value; save(); if(afterInput)afterInput(); } }}); e.value=o[k]?formatMoney(o[k]):''; return e; }
-function ensurePayment(p){ var payment=Object.assign({tipoCobranca:'fechado',valorUnitario:'',entradaTipo:'valor',entradaValor:'',entradaStatus:'Pendente',entradaDataPagamento:'',parcelasQtd:'',primeiroVencimento:'',parcelasDetalhes:[],pixDescontoPercentual:'',modalidadeEscolhida:'parcelado'},p||{}); if(!payment.id)payment.id=makeId('pag'); return payment; }
+function ensurePayment(p){ var payment=Object.assign({tipoCobranca:'fechado',valorUnitario:'',entradaTipo:'valor',entradaValor:'',entradaStatus:'Pendente',entradaDataPagamento:'',parcelasQtd:'',primeiroVencimento:'',parcelasDetalhes:[],pixDescontoPercentual:'',modalidadeEscolhida:'parcelado',formaPagamento:'',condicaoPagamento:'',avistaPago:null},p||{}); if(!payment.id)payment.id=makeId('pag'); if(!payment.formaPagamento)payment.formaPagamento=payment.modalidadeEscolhida==='pix'?'pix':'a definir'; if(!payment.condicaoPagamento)payment.condicaoPagamento=(payment.modalidadeEscolhida==='parcelado'||(payment.parcelasDetalhes||[]).length||payment.parcelasQtd)?'parcelado':'avista'; if(payment.avistaPago==null&&payment.pixPago!=null)payment.avistaPago=payment.pixPago; return payment; }
 function paymentTotal(p){ p=ensurePayment(p); return p.tipoCobranca==='porPessoa'?pn(p.valorUnitario)*pn(DB.convidadosPrevistos):pn(p.total); }
 function paymentEntry(p){ var total=paymentTotal(p); return p.entradaTipo==='percentual'?total*pn(p.entradaValor)/100:pn(p.entradaValor||p.entrada); }
 function paymentPix(p){ return paymentTotal(p)*(1-pn(p.pixDescontoPercentual)/100); }
 function paymentEntryPaid(p){ return p.entradaStatus==='Pago'?paymentEntry(p):0; }
-function paymentPaid(p){ if(p.modalidadeEscolhida==='pix')return p.pixPago?paymentPix(p):0; if((p.parcelasDetalhes||[]).length)return p.parcelasDetalhes.filter(function(x){return x.status==='Pago';}).reduce(function(a,x){return a+pn(x.valor);},0)+paymentEntryPaid(p); return p.pago!==undefined&&p.pago!==''?pn(p.pago):paymentEntryPaid(p); }
-function paymentCommitted(p){ return p.modalidadeEscolhida==='pix'?paymentPix(p):paymentTotal(p); }
+function paymentPaid(p){ p=ensurePayment(p); if(p.condicaoPagamento==='avista')return p.avistaPago?paymentCommitted(p):0; if((p.parcelasDetalhes||[]).length)return p.parcelasDetalhes.filter(function(x){return x.status==='Pago';}).reduce(function(a,x){return a+pn(x.valor);},0)+paymentEntryPaid(p); return p.pago!==undefined&&p.pago!==''?pn(p.pago):paymentEntryPaid(p); }
+function paymentCommitted(p){ p=ensurePayment(p); return p.condicaoPagamento==='avista'&&p.formaPagamento==='pix'?paymentPix(p):paymentTotal(p); }
 function paymentBalance(p){ return Math.max(0,paymentCommitted(p)-paymentPaid(p)); }
 function nextPendingPayment(){
   var next=null;
@@ -220,7 +220,7 @@ function nextPaymentCard(testId){
 function generateInstallments(p){ var qtd=Math.max(0,parseInt(p.parcelasQtd,10)||0), first=p.primeiroVencimento?new Date(p.primeiroVencimento+'T12:00:00'):null, base=Math.max(0,paymentTotal(p)-paymentEntry(p)); if(!qtd||!first||!paymentTotal(p))return false; if((p.parcelasDetalhes||[]).some(function(x){return x.status==='Pago';}))return false; var cents=Math.round(base*100), each=Math.floor(cents/qtd); p.parcelasDetalhes=[]; for(var i=0;i<qtd;i++){var d=new Date(first);d.setMonth(d.getMonth()+i);var value=(i===qtd-1?cents-each*(qtd-1):each)/100;p.parcelasDetalhes.push({numero:i+1,vencimento:d.toISOString().slice(0,10),valor:formatMoney(value),status:'Pendente',dataPagamento:''});} return true; }
 function dynamicTaskText(text){ if(text.indexOf('Definir estilo, nº de convidados')===0)return 'Definir estilo e prioridades do casamento'; return text; }
 function ta(o,k,ph){ var e=h('textarea',{class:'f',placeholder:ph||'',oninput:function(){o[k]=e.value;saveD();}}); e.value=o[k]==null?'':o[k]; return e; }
-function sel(o,k,opts,onch){ var s=h('select',{class:'f',onchange:function(){o[k]=s.value;save();if(onch)onch();}}); opts.forEach(function(op){ var x=h('option',{value:op},op===''?'—':op); if((o[k]==null?'':o[k])===op)x.selected=true; s.appendChild(x); }); return s; }
+function sel(o,k,opts,onch){ var s=h('select',{class:'f',onchange:function(){o[k]=s.value;save();if(onch)onch();}}); opts.forEach(function(op){ var value=typeof op==='object'?op.value:op,label=typeof op==='object'?op.label:(op===''?'—':op),x=h('option',{value:value},label); if((o[k]==null?'':o[k])===value)x.selected=true; s.appendChild(x); }); return s; }
 function cb(o,k,onch){ var c=h('input',{type:'checkbox',onchange:function(){o[k]=c.checked;save();if(onch)onch();}}); c.checked=!!o[k]; return c; }
 function field(l,n){ return h('div',{class:'field'}, h('label',{class:'fl'},l), n); }
 
@@ -621,14 +621,16 @@ function renderEssenciais(){
   });
 }
 
+var openPaymentDetailsId='';
 function renderPagamentos(){
   var el=q('pagamentos'); el.innerHTML=''; var card=h('div',{class:'card'},h('h2',{},'🧾 Controle de pagamentos'),h('p',{class:'hint'},'Abra “Parcelas” somente no fornecedor que desejar detalhar.'));
   var nextPayment=nextPendingPayment(); if(nextPayment)card.appendChild(h('p',{class:'hint'},'⏰ Próximo vencimento: '+nextPayment.forn+' · '+nextPayment.date.toLocaleDateString('pt-BR')+' · '+formatMoney(nextPayment.valor)));
   var box=h('div',{}), st=0,sp=0;
   DB.pagamentos.forEach(function(r,i){ r=DB.pagamentos[i]=ensurePayment(r); var total=paymentCommitted(r), paid=paymentPaid(r), balance=paymentBalance(r); st+=total;sp+=paid;
-    var modalidade=sel(r,'modalidadeEscolhida',['parcelado','pix'],function(){save();renderPagamentos();}); modalidade.setAttribute('aria-label','Modalidade de pagamento');
-    var row=h('div',{class:'opt'},h('div',{class:'oh'},r.forn||'Fornecedor',h('span',{},formatMoney(total)+' · saldo '+formatMoney(balance))),h('div',{class:'grid2'},field('Fornecedor',tf(r,'forn','Fornecedor')),field('Modalidade',modalidade)),h('div',{style:'display:flex;gap:8px;flex-wrap:wrap;margin-top:7px'},h('button',{class:'btn s mini',onclick:function(){row._details.classList.toggle('open');}},'Parcelas'),h('button',{class:'btn del mini',onclick:function(){DB.pagamentos.splice(i,1);save();renderPagamentos();}},'×')));
-    var details=h('div',{class:'acc-b'}); row._details=details;
+    var condicao=sel(r,'condicaoPagamento',[{value:'parcelado',label:'Parcelado'},{value:'avista',label:'À vista'}],function(){save();renderPagamentos();}); condicao.setAttribute('aria-label','Condição de pagamento');
+    var forma=sel(r,'formaPagamento',[{value:'a definir',label:'A definir'},{value:'pix',label:'Pix'},{value:'boleto',label:'Boleto'},{value:'cartao',label:'Cartão de crédito'},{value:'transferencia',label:'Transferência'},{value:'dinheiro',label:'Dinheiro'}],function(){save();renderPagamentos();}); forma.setAttribute('aria-label','Forma de pagamento');
+    var row=h('div',{class:'opt'},h('div',{class:'oh'},r.forn||'Fornecedor',h('span',{},formatMoney(total)+' · saldo '+formatMoney(balance))),h('div',{class:'grid2'},field('Fornecedor',tf(r,'forn','Fornecedor')),field('Condição',condicao),field('Forma de pagamento',forma)),h('div',{style:'display:flex;gap:8px;flex-wrap:wrap;margin-top:7px'},h('button',{class:'btn s mini',onclick:function(){openPaymentDetailsId=openPaymentDetailsId===r.id?'':r.id;row._details.classList.toggle('open');}},'Parcelas'),h('button',{class:'btn del mini',onclick:function(){if(openPaymentDetailsId===r.id)openPaymentDetailsId='';DB.pagamentos.splice(i,1);save();renderPagamentos();}},'×')));
+    var details=h('div',{class:'acc-b'+(openPaymentDetailsId===r.id?' open':'')}); row._details=details;
     details.appendChild(h('div',{class:'grid2'},field('Cobrança',sel(r,'tipoCobranca',['fechado','porPessoa'],function(){save();renderPagamentos();})),field(r.tipoCobranca==='porPessoa'?'Valor por pessoa':'Valor total',moneyInput(r,r.tipoCobranca==='porPessoa'?'valorUnitario':'total','0'))));
     if(r.tipoCobranca==='porPessoa')details.appendChild(h('p',{class:'hint','data-testid':'payment-per-person-hint'},'Total estimado: '+formatMoney(paymentTotal(r))+' · Base: '+(DB.convidadosPrevistos||0)+' convidados previstos da aba Convidados. Alterações nessa quantidade atualizam o financeiro.'));
     var entradaInput=moneyInput(r,'entradaValor','0'); entradaInput.setAttribute('aria-label','Entrada');
@@ -636,9 +638,11 @@ function renderPagamentos(){
     details.appendChild(h('div',{class:'grid2'},field('Entrada',entradaInput),field('Tipo entrada',sel(r,'entradaTipo',['valor','percentual'],function(){save();renderPagamentos();})),field('Status da entrada',entradaStatus)));
     details.appendChild(h('div',{class:'grid2'},field('Nº parcelas',tf(r,'parcelasQtd','10')),field('1º vencimento',tf(r,'primeiroVencimento','', 'date'))));
     details.appendChild(h('button',{class:'btn s mini',onclick:function(){if(!generateInstallments(r))toast('Informe total, parcelas e primeiro vencimento; parcelas pagas não são recriadas.');save();renderPagamentos();}},'Gerar parcelas'));
-    if(r.modalidadeEscolhida==='pix'){
-      var pixPaid=cb(r,'pixPago',function(){save();renderPagamentos();}); pixPaid.setAttribute('aria-label','Pix pago');
-      details.appendChild(h('div',{class:'grid2',style:'margin-top:8px'},field('Desconto Pix (%)',tf(r,'pixDescontoPercentual','0','text')),h('div',{class:'hint',style:'padding-top:23px'},'Pix à vista: '+formatMoney(paymentPix(r))),field('Pix pago',pixPaid)));
+    if(r.condicaoPagamento==='avista'){
+      var avistaPaid=cb(r,'avistaPago',function(){save();renderPagamentos();}); avistaPaid.setAttribute('aria-label','Pagamento à vista realizado');
+      var avistaItems=[field('Pagamento à vista realizado',avistaPaid)];
+      if(r.formaPagamento==='pix')avistaItems.unshift(field('Desconto Pix (%)',tf(r,'pixDescontoPercentual','0','text')),h('div',{class:'hint',style:'padding-top:23px'},'Pix à vista: '+formatMoney(paymentPix(r))));
+      details.appendChild(h('div',{class:'grid2',style:'margin-top:8px'},avistaItems));
     }
     (r.parcelasDetalhes||[]).forEach(function(p){
       var due=tf(p,'vencimento','', 'date'); due.setAttribute('aria-label','Vencimento da parcela '+p.numero);
