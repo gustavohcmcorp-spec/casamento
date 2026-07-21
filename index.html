@@ -205,9 +205,12 @@ function tf(o,k,ph,type,afterInput,saveImmediately){ var e=h('input',{class:'f',
 function moneyInput(o,k,ph,afterInput){ var e=h('input',{class:'f',type:'text',inputmode:'decimal',placeholder:ph||'',oninput:function(){o[k]=e.value;saveD();if(afterInput)afterInput();},onblur:function(){ if(e.value!==''){ e.value=formatMoney(e.value); o[k]=e.value; save(); if(afterInput)afterInput(); } }}); e.value=o[k]?formatMoney(o[k]):''; return e; }
 function ensurePayment(p){ var payment=Object.assign({tipoCobranca:'fechado',valorUnitario:'',entradaTipo:'valor',entradaValor:'',entradaStatus:'Pendente',entradaDataPagamento:'',parcelasQtd:'',primeiroVencimento:'',parcelasDetalhes:[],pixDescontoPercentual:'',modalidadeEscolhida:'parcelado',formaPagamento:'',condicaoPagamento:'',avistaPago:null},p||{}); if(!payment.id)payment.id=makeId('pag'); if(!payment.formaPagamento)payment.formaPagamento=payment.modalidadeEscolhida==='pix'?'pix':'a definir'; if(!payment.condicaoPagamento)payment.condicaoPagamento=(payment.modalidadeEscolhida==='parcelado'||(payment.parcelasDetalhes||[]).length||payment.parcelasQtd)?'parcelado':'avista'; if(payment.avistaPago==null&&payment.pixPago!=null)payment.avistaPago=payment.pixPago; return payment; }
 function guestPlanningBase(){ var listed=(DB.convidados||[]).reduce(function(sum,guest){return sum+guestCounts(guest).total;},0); return Math.max(pn(DB.convidadosPrevistos),listed); }
-function supplierTotal(o){ return o&&o.tipoCobranca==='porPessoa'?pn(o.valorUnitario)*guestPlanningBase():pn(o&&o.valor); }
-function supplierEstimateText(o){ return 'Total estimado: '+formatMoney(supplierTotal(o))+' · Base: '+guestPlanningBase()+' convidados (maior entre previstos e lista da aba Convidados). Alterações nessa quantidade atualizam o cálculo.'; }
-function paymentTotal(p){ p=ensurePayment(p); return p.tipoCobranca==='porPessoa'?pn(p.valorUnitario)*guestPlanningBase():pn(p.total); }
+function guestPricingBase(){ return (DB.convidados||[]).reduce(function(total,guest){var count=guestCounts(guest);total.adults+=count.adults;total.under5+=count.childrenUnder5;total.sixToTen+=count.children6To10;total.elevenPlus+=count.children11Plus;total.listed+=count.total;return total;},{adults:0,under5:0,sixToTen:0,elevenPlus:0,listed:0,pending:0}); }
+function tieredTotal(o){ var base=guestPricingBase();base.pending=Math.max(0,pn(DB.convidadosPrevistos)-base.listed);return (base.adults+base.pending)*pn(o.valorAdulto)+base.under5*pn(o.valorAte5)+base.sixToTen*pn(o.valor6a10)+base.elevenPlus*pn(o.valor11mais); }
+function packageTotal(o){var chosen=(o.pacotes||[]).filter(function(item){return item.id===o.pacoteEscolhido;})[0];return chosen?pn(chosen.valor):0;}
+function supplierTotal(o){ if(!o)return 0; if(o.tipoCobranca==='porPessoa')return pn(o.valorUnitario)*guestPlanningBase();if(o.tipoCobranca==='porFaixa')return tieredTotal(o);if(o.tipoCobranca==='pacote')return packageTotal(o);return pn(o.valor); }
+function supplierEstimateText(o){ if(o&&o.tipoCobranca==='porFaixa'){var base=guestPricingBase(),pending=Math.max(0,pn(DB.convidadosPrevistos)-base.listed);return 'Total estimado: '+formatMoney(supplierTotal(o))+' · '+base.adults+' adultos, '+base.under5+' até 5, '+base.sixToTen+' de 6 a 10, '+base.elevenPlus+' com 11+ e '+pending+' previsto'+(pending===1?'':'s')+' ainda sem faixa (considerado'+(pending===1?'':'s')+' adulto'+(pending===1?'':'s')+').';} return 'Total estimado: '+formatMoney(supplierTotal(o))+' · Base: '+guestPlanningBase()+' convidados (maior entre previstos e lista da aba Convidados). Alterações nessa quantidade atualizam o cálculo.'; }
+function paymentTotal(p){ p=ensurePayment(p); if(p.tipoCobranca==='porPessoa'||p.tipoCobranca==='porFaixa'||p.tipoCobranca==='pacote')return supplierTotal(p); return pn(p.total); }
 function paymentEntry(p){ var total=paymentTotal(p); return p.entradaTipo==='percentual'?total*pn(p.entradaValor)/100:pn(p.entradaValor||p.entrada); }
 function paymentPix(p){ return paymentTotal(p)*(1-pn(p.pixDescontoPercentual)/100); }
 function paymentEntryPaid(p){ return p.entradaStatus==='Pago'?paymentEntry(p):0; }
@@ -282,13 +285,24 @@ function normalizeGuestData(data){
     if(family!==(guest.grupo||'')){guest.grupo=family;changed=true;}
     if(guest.crAte5==null){guest.crAte5='';changed=true;}
     if(guest.crMais5==null){guest.crMais5=guest.cr==null?'':guest.cr;changed=true;}
+    if(guest.cr6a10==null){guest.cr6a10='';changed=true;}
+    if(guest.cr11mais==null){guest.cr11mais=guest.crMais5;changed=true;}
+    (guest.pessoas||[]).forEach(function(person){if(person.tipo==='Criança 6+'){person.tipo='Criança 11+';changed=true;}});
   });
   return changed;
+}
+function applyJfChurrascoRule(record){
+  if(!record||String(record.nome||record.forn||'').trim().toUpperCase()!=='JF CHURRASCO'||record.regraFaixaAutomatica)return false;
+  if(record.tipoCobranca==='porFaixa'&&(record.valorAdulto||record.valorAte5||record.valor6a10||record.valor11mais))return false;
+  record.tipoCobranca='porFaixa';record.valorAdulto='112';record.valorAte5='0';record.valor6a10='56';record.valor11mais='112';record.regraFaixaAutomatica='jf-churrasco-v1';
+  return true;
 }
 function normalizeWeddingContent(data,defaults){
   var changed=false;
   if(replaceLegacyWeddingDates(data))changed=true;
   if(normalizeGuestData(data))changed=true;
+  (data.categorias||[]).forEach(function(category){(category.opcoes||[]).forEach(function(option){if(applyJfChurrascoRule(option))changed=true;});});
+  (data.pagamentos||[]).forEach(function(payment){if(applyJfChurrascoRule(payment))changed=true;});
   ['mensagens','preferenciasNoivos'].forEach(function(key){ if(!data[key]||typeof data[key]!=='object'){data[key]=JSON.parse(JSON.stringify(defaults[key]));changed=true;} else Object.keys(defaults[key]).forEach(function(field){if(data[key][field]==null){data[key][field]=defaults[key][field];changed=true;}}); });
   (data.cronograma||[]).forEach(function(phase){(phase.tarefas||[]).forEach(function(task){if((task.t||'').indexOf('Definir estilo, nº de convidados')===0){task.t='Definir estilo e prioridades do casamento';changed=true;}if(task.t==='Fechar o buffet com degustação e contrato (parrilla + costela fogo de chão)'){task.t='Fechar buffet, degustação e contrato';changed=true;}});});
   (data.diad||[]).forEach(function(item){if(item.ativ==='Início do jantar (parrilla / costela fogo de chão)'){item.ativ='Início do jantar';changed=true;}});
@@ -582,16 +596,24 @@ function optBlock(cat,o,i){
   var criticalPending=o.contratoPontos.filter(function(point){return point.status!== 'Conferido'&&point.status!=='N/A';}).length;
   var critical=h('details',{},h('summary',{},'Pontos críticos do contrato · '+criticalPending+' pendentes'));
   o.contratoPontos.forEach(function(point){var note=h('input',{class:'cn obs',placeholder:'Valor, cláusula ou observação',oninput:function(){point.obs=note.value;saveD();}});note.value=point.obs||'';critical.appendChild(h('div',{class:'inc'},h('div',{class:'lbl'},point.label),sel(point,'status',['','Conferido','N/A'],function(){cat.open=true;save();renderFornecedores();}),note));});
-  var proposalValue=function(){return o.tipoCobranca==='porPessoa'&&o.valorUnitario?formatMoney(supplierTotal(o))+' estimado':(o.valor?formatMoney(o.valor):'A preencher');};
+  if(!o.pacotes)o.pacotes=[];
+  var proposalValue=function(){if(o.tipoCobranca==='porPessoa'||o.tipoCobranca==='porFaixa'||o.tipoCobranca==='pacote')return supplierTotal(o)?formatMoney(supplierTotal(o))+' estimado':'A preencher';return o.valor?formatMoney(o.valor):'A preencher';};
   var proposalChip=h('span',{class:'chip '+(cat.opcaoEscolhida===i?'g':'n')},cat.opcaoEscolhida===i?'Escolhida':proposalValue());
   var summary=h('summary',{},h('span',{},o.nome||('Opção '+(i+1))),proposalChip);
-  var perPersonHint=o.tipoCobranca==='porPessoa'?h('p',{class:'hint','data-testid':'supplier-per-person-hint'},supplierEstimateText(o)):null;
-  var supplierPrice=moneyInput(o,o.tipoCobranca==='porPessoa'?'valorUnitario':'valor','0',function(){if(perPersonHint)perPersonHint.textContent=supplierEstimateText(o);if(o.tipoCobranca==='porPessoa')proposalChip.textContent=proposalValue();});
+  var pricingHint=(o.tipoCobranca==='porPessoa'||o.tipoCobranca==='porFaixa')?h('p',{class:'hint','data-testid':'supplier-per-person-hint'},supplierEstimateText(o)):null;
+  var supplierPrice=moneyInput(o,o.tipoCobranca==='porPessoa'?'valorUnitario':'valor','0',function(){if(pricingHint)pricingHint.textContent=supplierEstimateText(o);proposalChip.textContent=proposalValue();});
+  var pricingFields=o.tipoCobranca==='porFaixa'?h('div',{class:'grid2'},field('Adultos (R$)',moneyInput(o,'valorAdulto','0',function(){pricingHint.textContent=supplierEstimateText(o);proposalChip.textContent=proposalValue();})),field('Crianças até 5 anos (R$)',moneyInput(o,'valorAte5','0',function(){pricingHint.textContent=supplierEstimateText(o);proposalChip.textContent=proposalValue();})),field('Crianças de 6 a 10 anos (R$)',moneyInput(o,'valor6a10','0',function(){pricingHint.textContent=supplierEstimateText(o);proposalChip.textContent=proposalValue();})),field('Crianças com 11 anos ou mais (R$)',moneyInput(o,'valor11mais','0',function(){pricingHint.textContent=supplierEstimateText(o);proposalChip.textContent=proposalValue();}))):null;
+  var packageFields=null;
+  if(o.tipoCobranca==='pacote'){
+    var packageList=h('div',{});
+    o.pacotes.forEach(function(item,index){var remove=h('button',{class:'btn del mini',onclick:function(){o.pacotes.splice(index,1);if(o.pacoteEscolhido===item.id)o.pacoteEscolhido='';save();renderFornecedores();}},'×');packageList.appendChild(h('div',{class:'grid2'},field('Pacote',tf(item,'nome','Ex.: Gold')),field('Duração',tf(item,'duracao','Ex.: 4 horas')),field('Valor (R$)',moneyInput(item,'valor','0',function(){proposalChip.textContent=proposalValue();})),field('Escolha',sel(o,'pacoteEscolhido',[{value:'',label:'A definir'}].concat(o.pacotes.map(function(p){return {value:p.id,label:(p.nome||'Pacote')+(p.duracao?' · '+p.duracao:'')};})),function(){save();renderFornecedores();})),remove));});
+    packageFields=h('details',{open:'open'},h('summary',{},'Pacotes e duração'),h('p',{class:'hint'},'Cadastre cada combinação de pacote e horas com o valor fechado da proposta.'),packageList,h('button',{class:'btn s mini',onclick:function(){o.pacotes.push({id:makeId('pkg'),nome:'',duracao:'',valor:''});o.open=true;cat.open=true;save();renderFornecedores();}},'+ pacote'));
+  }
   var proposalBody=h('div',{class:'proposal-body'},
     h('div',{class:'oh',style:'justify-content:flex-end'},h('div',{style:'display:flex;gap:5px;flex-wrap:wrap'},h('button',{class:'btn s mini',onclick:function(){cat.opcaoEscolhida===i?unchooseSupplierOption(cat):chooseSupplierOption(cat,o,i);}},cat.opcaoEscolhida===i?'Desfazer escolha':'Escolher esta opção'),h('button',{class:'btn del mini',onclick:function(){ if(cat.opcoes.length<=1)return; cat.opcoes.splice(i,1); save(); renderFornecedores(); }},'remover'))),
     h('div',{class:'grid2'}, field('Fornecedor',tf(o,'nome','Nome')), field('Contato',tf(o,'contato','Tel / @ / site'))),
-    h('div',{class:'grid2'},field('Cobrança',sel(o,'tipoCobranca',['fechado','porPessoa'],function(){o.open=true;cat.open=true;save();renderFornecedores();})),field(o.tipoCobranca==='porPessoa'?'Valor por pessoa':'Valor (R$)',supplierPrice)),
-    perPersonHint,
+    h('div',{class:'grid2'},field('Cobrança',sel(o,'tipoCobranca',[{value:'fechado',label:'Valor fechado'},{value:'porPessoa',label:'Por pessoa'},{value:'porFaixa',label:'Por pessoa com faixas'},{value:'pacote',label:'Pacotes por duração'}],function(){o.open=true;cat.open=true;save();renderFornecedores();})),(o.tipoCobranca==='fechado'||o.tipoCobranca==='porPessoa')?field(o.tipoCobranca==='porPessoa'?'Valor por pessoa':'Valor (R$)',supplierPrice):null),
+    pricingFields,pricingHint,packageFields,
     field('Complementos do que inclui', ta(o,'inclui','Adicione algo que não esteja no checklist')),
     includedSummary,included,visit,contract,critical
   );
@@ -602,7 +624,7 @@ function chooseSupplierOption(cat,o,index){
   var label=cat.nome.replace(/^\d+\.\s*/,'').replace(/\s*\(.*/,''), key=label.toLowerCase().split(' ')[0], link='categoria:'+cat.nome;
   var p=DB.pagamentos.find(function(item){return item.vinculoFornecedor===link||(item.forn||'').toLowerCase().indexOf(key)>=0;});
   if(!p){p=ensurePayment({forn:label,total:''});DB.pagamentos.push(p);} else Object.assign(p,ensurePayment(p));
-  p.forn=o.nome||label; p.total=o.valor||p.total; p.tipoCobranca=o.tipoCobranca||'fechado'; p.valorUnitario=o.valorUnitario||p.valorUnitario; p.vinculoFornecedor=link; o.pagamentoId=p.id; o.pagamentoVinculo=link; o.open=true;
+  p.forn=o.nome||label; p.total=o.valor||p.total; p.tipoCobranca=o.tipoCobranca||'fechado'; p.valorUnitario=o.valorUnitario||''; p.valorAdulto=o.valorAdulto||''; p.valorAte5=o.valorAte5||''; p.valor6a10=o.valor6a10||''; p.valor11mais=o.valor11mais||''; p.pacotes=JSON.parse(JSON.stringify(o.pacotes||[])); p.pacoteEscolhido=o.pacoteEscolhido||''; p.vinculoFornecedor=link; o.pagamentoId=p.id; o.pagamentoVinculo=link; o.open=true;
   cat.opcaoEscolhida=index; cat.decisao=p.forn; cat.status='Reservado'; cat.open=true; save(); renderFornecedores(); toast('Opção enviada para Pagamentos.');
 }
 function unchooseSupplierOption(cat){ var option=cat.opcoes[cat.opcaoEscolhida], link=(option&&option.pagamentoVinculo)||('categoria:'+cat.nome), names=[option&&option.nome,cat.decisao].filter(Boolean).map(function(name){return name.trim().toLowerCase();}); DB.pagamentos=DB.pagamentos.filter(function(payment){var paymentName=(payment.forn||'').trim().toLowerCase();return payment.id!==((option&&option.pagamentoId)||'')&&payment.vinculoFornecedor!==link&&names.indexOf(paymentName)<0;}); if(option){delete option.pagamentoId;delete option.pagamentoVinculo;} delete cat.opcaoEscolhida; delete cat.decisao; if(cat.status==='Reservado')cat.status='Orçamento recebido'; cat.open=true; save();renderFornecedores();toast('Escolha e pagamento vinculado removidos.'); }
@@ -665,8 +687,13 @@ function renderPagamentos(){
     var forma=sel(r,'formaPagamento',[{value:'a definir',label:'A definir'},{value:'pix',label:'Pix'},{value:'boleto',label:'Boleto'},{value:'cartao',label:'Cartão de crédito'},{value:'transferencia',label:'Transferência'},{value:'dinheiro',label:'Dinheiro'}],function(){save();renderPagamentos();}); forma.setAttribute('aria-label','Forma de pagamento');
     var row=h('div',{class:'opt'},h('div',{class:'oh'},r.forn||'Fornecedor',h('span',{},formatMoney(total)+' · saldo '+formatMoney(balance))),h('div',{class:'grid2'},field('Fornecedor',tf(r,'forn','Fornecedor')),field('Condição',condicao),field('Forma de pagamento',forma)),h('div',{style:'display:flex;gap:8px;flex-wrap:wrap;margin-top:7px'},h('button',{class:'btn s mini',onclick:function(){openPaymentDetailsId=openPaymentDetailsId===r.id?'':r.id;row._details.classList.toggle('open');}},'Parcelas'),h('button',{class:'btn del mini',onclick:function(){if(openPaymentDetailsId===r.id)openPaymentDetailsId='';DB.pagamentos.splice(i,1);save();renderPagamentos();}},'×')));
     var details=h('div',{class:'acc-b'+(openPaymentDetailsId===r.id?' open':'')}); row._details=details;
-    details.appendChild(h('div',{class:'grid2'},field('Cobrança',sel(r,'tipoCobranca',['fechado','porPessoa'],function(){save();renderPagamentos();})),field(r.tipoCobranca==='porPessoa'?'Valor por pessoa':'Valor total',moneyInput(r,r.tipoCobranca==='porPessoa'?'valorUnitario':'total','0'))));
-    if(r.tipoCobranca==='porPessoa')details.appendChild(h('p',{class:'hint','data-testid':'payment-per-person-hint'},'Total estimado: '+formatMoney(paymentTotal(r))+' · Base: '+guestPlanningBase()+' convidados (maior entre previstos e lista da aba Convidados). Alterações nessa quantidade atualizam o financeiro.'));
+    var paymentCharge=sel(r,'tipoCobranca',[{value:'fechado',label:'Valor fechado'},{value:'porPessoa',label:'Por pessoa'},{value:'porFaixa',label:'Por pessoa com faixas'},{value:'pacote',label:'Pacotes por duração'}],function(){save();renderPagamentos();});
+    var paymentValue=(r.tipoCobranca==='fechado'||r.tipoCobranca==='porPessoa')?field(r.tipoCobranca==='porPessoa'?'Valor por pessoa':'Valor total',moneyInput(r,r.tipoCobranca==='porPessoa'?'valorUnitario':'total','0')):null;
+    details.appendChild(h('div',{class:'grid2'},field('Cobrança',paymentCharge),paymentValue));
+    if(r.tipoCobranca==='porFaixa')details.appendChild(h('div',{class:'grid2'},field('Adultos (R$)',moneyInput(r,'valorAdulto','0')),field('Crianças até 5 anos (R$)',moneyInput(r,'valorAte5','0')),field('Crianças de 6 a 10 anos (R$)',moneyInput(r,'valor6a10','0')),field('Crianças com 11 anos ou mais (R$)',moneyInput(r,'valor11mais','0'))));
+    if(r.tipoCobranca==='pacote')details.appendChild(h('div',{class:'grid2'},field('Pacote contratado',sel(r,'pacoteEscolhido',[{value:'',label:'A definir'}].concat((r.pacotes||[]).map(function(item){return {value:item.id,label:(item.nome||'Pacote')+(item.duracao?' · '+item.duracao:'')+(item.valor?' · '+formatMoney(item.valor):'')};})),function(){save();renderPagamentos();}))));
+    if(r.tipoCobranca==='porPessoa'||r.tipoCobranca==='porFaixa')details.appendChild(h('p',{class:'hint','data-testid':'payment-per-person-hint'},supplierEstimateText(r)));
+    if(r.tipoCobranca==='pacote')details.appendChild(h('p',{class:'hint'},'Total do pacote selecionado: '+formatMoney(paymentTotal(r))+'.'));
     var entradaInput=moneyInput(r,'entradaValor','0'); entradaInput.setAttribute('aria-label','Entrada');
     var entradaStatus=sel(r,'entradaStatus',['Pendente','Pago'],function(){r.entradaDataPagamento=r.entradaStatus==='Pago'?(r.entradaDataPagamento||new Date().toISOString().slice(0,10)):'';save();renderPagamentos();}); entradaStatus.setAttribute('aria-label','Status da entrada');
     details.appendChild(h('div',{class:'grid2'},field('Entrada',entradaInput),field('Tipo entrada',sel(r,'entradaTipo',['valor','percentual'],function(){save();renderPagamentos();})),field('Status da entrada',entradaStatus)));
@@ -701,10 +728,10 @@ function prepareWhatsAppInvite(g,reminder){
   window.open('https://wa.me/'+phone+'?text='+encodeURIComponent(text),'_blank');
 }
 
-function guestCounts(g){ var adults=pn(g.ad),childrenUnder5=pn(g.crAte5),children6Plus=pn(g.crMais5==null?g.cr:g.crMais5),children=childrenUnder5+children6Plus; if(!adults&&!children)adults=1; return {adults:adults,childrenUnder5:childrenUnder5,children6Plus:children6Plus,children:children,total:adults+children}; }
+function guestCounts(g){ var adults=pn(g.ad),childrenUnder5=pn(g.crAte5),children6To10=pn(g.cr6a10),children11Plus=pn(g.cr11mais==null?(g.crMais5==null?g.cr:g.crMais5):g.cr11mais),children=childrenUnder5+children6To10+children11Plus; if(!adults&&!children)adults=1; return {adults:adults,childrenUnder5:childrenUnder5,children6To10:children6To10,children11Plus:children11Plus,children6Plus:children11Plus,children:children,total:adults+children}; }
 function ensureGuestPeople(g){
   var counts=guestCounts(g),current=g.pessoas||[],stored=g.pessoasNaoAlocadas||[],desired=[],usedCurrent=[],usedStored=[];
-  function isChild(person){return person&&['Criança','Criança até 5','Criança 6+'].indexOf(person.tipo)>=0;}
+  function isChild(person){return person&&['Criança','Criança até 5','Criança 6+','Criança 6 a 10','Criança 11+'].indexOf(person.tipo)>=0;}
   function take(type,allowChildFallback){
     var i,person;
     for(i=0;i<current.length;i++){if(!usedCurrent[i]&&current[i].tipo===type){usedCurrent[i]=true;return current[i];}}
@@ -715,7 +742,8 @@ function ensureGuestPeople(g){
   }
   for(var a=0;a<counts.adults;a++){var adult=take('Adulto',false);desired.push({tipo:'Adulto',nome:adult.nome||(a===0?g.nome:'')});}
   for(var u=0;u<counts.childrenUnder5;u++){var childUnder5=take('Criança até 5',true);desired.push({tipo:'Criança até 5',nome:childUnder5.nome||''});}
-  for(var c=0;c<counts.children6Plus;c++){var child6Plus=take('Criança 6+',true);desired.push({tipo:'Criança 6+',nome:child6Plus.nome||''});}
+  for(var c=0;c<counts.children6To10;c++){var child6To10=take('Criança 6 a 10',true);desired.push({tipo:'Criança 6 a 10',nome:child6To10.nome||''});}
+  for(var e=0;e<counts.children11Plus;e++){var child11Plus=take('Criança 11+',true);desired.push({tipo:'Criança 11+',nome:child11Plus.nome||''});}
   g.pessoasNaoAlocadas=[];
   current.forEach(function(person,i){if(!usedCurrent[i]&&person&&person.nome)g.pessoasNaoAlocadas.push({tipo:person.tipo,nome:person.nome});});
   stored.forEach(function(person,i){if(!usedStored[i]&&person&&person.nome)g.pessoasNaoAlocadas.push({tipo:person.tipo,nome:person.nome});});
@@ -726,15 +754,15 @@ function guestCountCell(g,key,cls){ var td=h('td',{class:'num '+(cls||'')}),inpu
 function guestCountInput(g,key){ var input=h('input',{class:'f',type:'text',inputmode:'numeric',oninput:function(){g[key]=input.value;saveD();},onblur:function(){ensureGuestPeople(g);save();renderConvidados();}});input.value=g[key]||'';return input; }
 function guestPeopleEditor(g){ var people=ensureGuestPeople(g),details=h('details',{},h('summary',{},'Pessoas convidadas · '+people.length)); people.forEach(function(person){var number=people.filter(function(p){return p.tipo===person.tipo;}).indexOf(person)+1,input=h('input',{class:'f',placeholder:person.tipo+' '+number,oninput:function(){person.nome=input.value;save();},onblur:function(){person.nome=input.value;save();}});input.value=person.nome||'';details.appendChild(field(person.tipo+' '+number,input));});var pending=(g.pessoasNaoAlocadas||[]).filter(function(person){return person.nome;});if(pending.length)details.appendChild(h('p',{class:'hint'},'Nomes preservados para realocar: '+pending.map(function(person){return person.nome;}).join(', ')+'. Ajuste as quantidades acima para aproveitá-los automaticamente.'));var note=h('input',{class:'f',placeholder:'Observação da família',oninput:function(){g.obs=note.value;saveD();}});note.value=g.obs||'';details.appendChild(field('Observação',note));return details; }
 function guestPeopleCell(g){ return h('td',{class:'guest-people'},guestPeopleEditor(g)); }
-function guestMobileCard(g,index){ var count=guestCounts(g),body=h('div',{class:'guest-card-body'},h('div',{class:'grid2'},field('Nome',tf(g,'nome','Nome ou família')),field('Família',tf(g,'grupo','Noivo, Noiva, amigos...'))),h('div',{class:'grid3 guest-counts'},field('Adultos',guestCountInput(g,'ad')),field('Crianças até 5 anos',guestCountInput(g,'crAte5')),field('Crianças com 6 anos ou mais',guestCountInput(g,'crMais5'))),field('WhatsApp',tf(g,'telefone','DDD + número')),h('div',{class:'grid2'},field('Convite',sel(g,'convite',['Não enviado','Preparado no WhatsApp','Enviado','Lembrete enviado'],renderConvidados)),field('Confirmação',sel(g,'conf',['Pendente','Confirmado','Não vai'],renderConvidados))),guestPeopleEditor(g)); var actions=h('div',{class:'guest-card-actions'},h('button',{class:'btn s mini',onclick:function(){prepareWhatsAppInvite(g);}},'Preparar WhatsApp'),g.conf==='Pendente'?h('button',{class:'btn mini',onclick:function(){prepareWhatsAppInvite(g,true);}},'Lembrete RSVP'):null,h('button',{class:'btn del mini',onclick:function(){DB.convidados.splice(index,1);save();renderConvidados();}},'Remover'));body.appendChild(actions);return h('details',{class:'guest-card'},h('summary',{},h('span',{},g.nome||'Convidado sem nome'),h('span',{class:'mini'},count.adults+' adultos · '+count.childrenUnder5+' até 5 · '+count.children6Plus+' com 6+'),h('span',{class:'mini'},g.conf||'Pendente')),body); }
+function guestMobileCard(g,index){ var count=guestCounts(g),body=h('div',{class:'guest-card-body'},h('div',{class:'grid2'},field('Nome',tf(g,'nome','Nome ou família')),field('Família',tf(g,'grupo','Noivo, Noiva, amigos...'))),h('div',{class:'grid2 guest-counts'},field('Adultos',guestCountInput(g,'ad')),field('Crianças até 5 anos',guestCountInput(g,'crAte5')),field('Crianças de 6 a 10 anos',guestCountInput(g,'cr6a10')),field('Crianças com 11 anos ou mais',guestCountInput(g,'cr11mais'))),field('WhatsApp',tf(g,'telefone','DDD + número')),h('div',{class:'grid2'},field('Convite',sel(g,'convite',['Não enviado','Preparado no WhatsApp','Enviado','Lembrete enviado'],renderConvidados)),field('Confirmação',sel(g,'conf',['Pendente','Confirmado','Não vai'],renderConvidados))),guestPeopleEditor(g)); var actions=h('div',{class:'guest-card-actions'},h('button',{class:'btn s mini',onclick:function(){prepareWhatsAppInvite(g);}},'Preparar WhatsApp'),g.conf==='Pendente'?h('button',{class:'btn mini',onclick:function(){prepareWhatsAppInvite(g,true);}},'Lembrete RSVP'):null,h('button',{class:'btn del mini',onclick:function(){DB.convidados.splice(index,1);save();renderConvidados();}},'Remover'));body.appendChild(actions);return h('details',{class:'guest-card'},h('summary',{},h('span',{},g.nome||'Convidado sem nome'),h('span',{class:'mini'},count.adults+' adultos · '+count.childrenUnder5+' até 5 · '+count.children6To10+' de 6 a 10 · '+count.children11Plus+' com 11+'),h('span',{class:'mini'},g.conf||'Pendente')),body); }
 function guestNamesForPrint(g){ var names=(g.pessoas||[]).map(function(person){return (person.nome||'').trim()||'Não informado';}); return names.join(', '); }
 function familyTotals(){ return (DB.convidados||[]).reduce(function(totals,g){var family=normalizeFamily(g.grupo),count=guestCounts(g).total;if(family)totals[family]=(totals[family]||0)+count;return totals;},{}); }
 function familyLabel(family){ return family==='Noiva'?'Família Noiva':family==='Noivo'?'Família Noivo':family; }
 
 function renderConvidados(){
   var el=q('convidados'); el.innerHTML='';
-  var total=0,adults=0,children=0,childrenUnder5=0,children6Plus=0,conf=0,pend=0,enviados=0,templates=guestMessageTemplates(),families;
-  DB.convidados.forEach(function(g){ var count=guestCounts(g),p=count.total; total+=p;adults+=count.adults;children+=count.children;childrenUnder5+=count.childrenUnder5;children6Plus+=count.children6Plus; if(g.conf==='Confirmado')conf+=p; if(g.conf==='Pendente')pend++; if(g.convite==='Enviado'||g.convite==='Lembrete enviado')enviados+=p; });
+  var total=0,adults=0,children=0,childrenUnder5=0,children6To10=0,children11Plus=0,conf=0,pend=0,enviados=0,templates=guestMessageTemplates(),families;
+  DB.convidados.forEach(function(g){ var count=guestCounts(g),p=count.total; total+=p;adults+=count.adults;children+=count.children;childrenUnder5+=count.childrenUnder5;children6To10+=count.children6To10;children11Plus+=count.children11Plus; if(g.conf==='Confirmado')conf+=p; if(g.convite==='Enviado'||g.convite==='Lembrete enviado')enviados+=p; });
   families=familyTotals();
   var planned=tf(DB,'convidadosPrevistos','60','text',updateBudgetSummaryText,true); planned.setAttribute('data-testid','guests-planned');
   var rsvpDeadline=tf(DB,'prazoRSVP','', 'date');
@@ -745,21 +773,22 @@ function renderConvidados(){
       h('div',{class:'k','data-testid':'guest-adults'}, h('div',{class:'v'},adults), h('div',{class:'t'},'adultos')),
       h('div',{class:'k','data-testid':'guest-children'}, h('div',{class:'v'},children), h('div',{class:'t'},'crianças')),
       h('div',{class:'k','data-testid':'guest-children-under-5'}, h('div',{class:'v'},childrenUnder5), h('div',{class:'t'},'até 5 · isentas')),
-      h('div',{class:'k','data-testid':'guest-children-6-plus'}, h('div',{class:'v'},children6Plus), h('div',{class:'t'},'crianças com 6 anos ou mais')),
+      h('div',{class:'k','data-testid':'guest-children-6-to-10'}, h('div',{class:'v'},children6To10), h('div',{class:'t'},'crianças de 6 a 10')),
+      h('div',{class:'k','data-testid':'guest-children-11-plus'}, h('div',{class:'v'},children11Plus), h('div',{class:'t'},'crianças com 11+')),
       h('div',{class:'k'}, h('div',{class:'v'},enviados), h('div',{class:'t'},'convites enviados')),
       h('div',{class:'k'}, h('div',{class:'v'},conf), h('div',{class:'t'},'confirmadas')),
       h('div',{class:'k'}, h('div',{class:'v'},DB.convidadosPrevistos||'0'), h('div',{class:'t'},'previstos')),
       h('div',{class:'k'}, h('div',{class:'v'},pend), h('div',{class:'t'},'pendentes'))
     ),
     Object.keys(families).length?h('div',{class:'family-totals','data-testid':'family-totals'},h('span',{class:'mini'},'Famílias:'),Object.keys(families).sort(function(a,b){var order={Noiva:0,Noivo:1};return (order[a]??9)-(order[b]??9)||a.localeCompare(b,'pt-BR');}).map(function(family){return h('span',{class:'chip n'},familyLabel(family)+' · '+families[family]+' pessoa'+(families[family]===1?'':'s'));})):null,
-    h('p',{class:'hint'},'Crianças até 5 anos: isentas. Crianças com 6 anos ou mais: referência para cotação. Preencha os nomes de acompanhantes em “Pessoas convidadas”.'),
+    h('p',{class:'hint'},'Crianças até 5 anos: isentas. Crianças de 6 a 10 e com 11+ podem ter regras distintas por fornecedor. Preencha os nomes de acompanhantes em “Pessoas convidadas”.'),
     h('div',{'data-testid':'rsvp-progress'},h('div',{class:'mini'},conf+' de '+(DB.convidadosPrevistos||0)+' confirmações · '+(pn(DB.convidadosPrevistos)?Math.min(100,Math.round(conf/pn(DB.convidadosPrevistos)*100)):0)+'%'),h('div',{class:'prog'},h('i',{style:'width:'+(pn(DB.convidadosPrevistos)?Math.min(100,Math.round(conf/pn(DB.convidadosPrevistos)*100)):0)+'%'}))));
   var messageSettings=h('details',{},h('summary',{},'Personalizar mensagens do WhatsApp'),h('p',{class:'hint'},'Os textos servem para todos. Preserve {{nome}} para inserir cada convidado; também há {{data}}, {{hora}}, {{local}}, {{mapa}} e {{prazo_rsvp}}.'),field('Mensagem de convite',ta(templates,'convite','Mensagem do convite')),field('Mensagem de lembrete',ta(templates,'lembrete','Mensagem de lembrete'))); card.appendChild(messageSettings); el.appendChild(card);
   var guestListCard=h('div',{class:'card screen-only guest-list-card'}),guestCards=h('div',{class:'guest-cards'}); DB.convidados.forEach(function(g,i){guestCards.appendChild(guestMobileCard(g,i));}); guestListCard.appendChild(guestCards);
-  var guestColumns=h('colgroup',{},h('col',{style:'width:210px'}),h('col',{style:'width:120px'}),h('col',{style:'width:90px'}),h('col',{style:'width:135px'}),h('col',{style:'width:155px'}),h('col',{style:'width:155px'}),h('col',{style:'width:160px'}),h('col',{style:'width:150px'}),h('col',{style:'width:310px'}),h('col',{style:'width:165px'}));
+  var guestColumns=h('colgroup',{},h('col',{style:'width:210px'}),h('col',{style:'width:120px'}),h('col',{style:'width:90px'}),h('col',{style:'width:135px'}),h('col',{style:'width:145px'}),h('col',{style:'width:155px'}),h('col',{style:'width:155px'}),h('col',{style:'width:160px'}),h('col',{style:'width:150px'}),h('col',{style:'width:310px'}),h('col',{style:'width:165px'}));
   var tb=h('tbody',{});
   DB.convidados.forEach(function(g,i){
-    var tr=h('tr',{}, tdIn(g,'nome','guest-name'), tdIn(g,'grupo','guest-family'), guestCountCell(g,'ad','guest-count'), guestCountCell(g,'crAte5','guest-under-five'), guestCountCell(g,'crMais5','guest-six-plus'),
+    var tr=h('tr',{}, tdIn(g,'nome','guest-name'), tdIn(g,'grupo','guest-family'), guestCountCell(g,'ad','guest-count'), guestCountCell(g,'crAte5','guest-under-five'), guestCountCell(g,'cr6a10','guest-six-to-ten'), guestCountCell(g,'cr11mais','guest-eleven-plus'),
       tdIn(g,'telefone','guest-whatsapp'),
       h('td',{class:'guest-invite'}, sel(g,'convite',['Não enviado','Preparado no WhatsApp','Enviado','Lembrete enviado'],function(){renderConvidados();})),
       h('td',{class:'guest-confirmation'}, sel(g,'conf',['Pendente','Confirmado','Não vai'],function(){renderConvidados();})),
@@ -767,11 +796,11 @@ function renderConvidados(){
       h('td',{class:'guest-actions'},h('div',{class:'guest-action-set'},h('button',{class:'btn s mini',onclick:function(){prepareWhatsAppInvite(g);}},'Preparar WhatsApp'),g.conf==='Pendente'?h('button',{class:'btn mini',onclick:function(){prepareWhatsAppInvite(g,true);}},'Lembrete RSVP'):null,h('button',{class:'btn del mini',onclick:function(){DB.convidados.splice(i,1);save();renderConvidados();}},'Remover'))));
     tb.appendChild(tr);
   });
-  guestListCard.appendChild(h('div',{class:'twrap guest-table'}, h('table',{}, guestColumns,h('thead',{}, h('tr',{}, th('Nome'),th('Família'),th('Adultos'),th('Crianças até 5 anos'),th('Crianças com 6 anos ou mais'),th('WhatsApp'),th('Convite'),th('Confirmação'),th('Pessoas convidadas'),th('Ações'))), tb)));
-  guestListCard.appendChild(h('button',{class:'btn p mini addrow',onclick:function(){ DB.convidados.push({nome:'',grupo:'',ad:'',crAte5:'',crMais5:'',convite:'Não enviado',conf:'Pendente',mesa:'',obs:''}); save(); renderConvidados(); }},'+ convidado'));
+  guestListCard.appendChild(h('div',{class:'twrap guest-table'}, h('table',{}, guestColumns,h('thead',{}, h('tr',{}, th('Nome'),th('Família'),th('Adultos'),th('Crianças até 5 anos'),th('Crianças de 6 a 10 anos'),th('Crianças com 11 anos ou mais'),th('WhatsApp'),th('Convite'),th('Confirmação'),th('Pessoas convidadas'),th('Ações'))), tb)));
+  guestListCard.appendChild(h('button',{class:'btn p mini addrow',onclick:function(){ DB.convidados.push({nome:'',grupo:'',ad:'',crAte5:'',cr6a10:'',cr11mais:'',convite:'Não enviado',conf:'Pendente',mesa:'',obs:''}); save(); renderConvidados(); }},'+ convidado'));
   el.appendChild(guestListCard);
-  var printBody=h('tbody',{});DB.convidados.forEach(function(g){var count=guestCounts(g);printBody.appendChild(h('tr',{},h('td',{},g.nome||'Não informado'),h('td',{},count.adults),h('td',{},count.childrenUnder5),h('td',{},count.children6Plus),h('td',{},guestNamesForPrint(g))));});
-  el.appendChild(h('div',{class:'print-only guest-print'},h('h1',{},'Lista de convidados — Portaria'),h('div',{class:'print-meta'},'Casamento · '+weddingDateShort()+' · '+total+' pessoas ('+adults+' adultos, '+childrenUnder5+' até 5 e '+children6Plus+' com 6+)'),h('table',{},h('thead',{},h('tr',{},th('Nome / família'),th('Ad'),th('Até 5'),th('6+'),th('Pessoas convidadas'))),printBody)));
+  var printBody=h('tbody',{});DB.convidados.forEach(function(g){var count=guestCounts(g);printBody.appendChild(h('tr',{},h('td',{},g.nome||'Não informado'),h('td',{},count.adults),h('td',{},count.childrenUnder5),h('td',{},count.children6To10),h('td',{},count.children11Plus),h('td',{},guestNamesForPrint(g))));});
+  el.appendChild(h('div',{class:'print-only guest-print'},h('h1',{},'Lista de convidados — Portaria'),h('div',{class:'print-meta'},'Casamento · '+weddingDateShort()+' · '+total+' pessoas ('+adults+' adultos, '+childrenUnder5+' até 5, '+children6To10+' de 6 a 10 e '+children11Plus+' com 11+)'),h('table',{},h('thead',{},h('tr',{},th('Nome / família'),th('Ad'),th('Até 5'),th('6–10'),th('11+'),th('Pessoas convidadas'))),printBody)));
 }
 
 function renderNoivos(){
