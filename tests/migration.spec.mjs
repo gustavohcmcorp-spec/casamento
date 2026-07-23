@@ -168,3 +168,34 @@ test('carregamento local migra dados v2 automaticamente', async ({ page }) => {
   expect(saved.config.noiva).toBe('Gleicianne');
   expect(saved.convidados[0].id).toMatch(/^con_/);
 });
+
+test('normaliza pagamento Beleza para noiva sem perder parcelas', async ({ page }) => {
+  await page.goto('/index.html?test=1&authenticated=1');
+  const result = await page.evaluate(() => {
+    const legacy = defaultDB();
+    const payment = legacy.pagamentos.find(item => item.forn === 'Beleza');
+    payment.total = '1500';
+    payment.entradaValor = '300';
+    payment.entradaStatus = 'Pago';
+    payment.parcelasDetalhes = [{ numero: 1, valor: '600', status: 'Pago' }];
+    const first = migrateDB(legacy).data;
+    const second = migrateDB(first);
+    return { first, second };
+  });
+  const bride = result.first.pagamentos.find(item => item.forn === 'Beleza da noiva');
+  expect(bride).toMatchObject({ total: '1500', entradaValor: '300', entradaStatus: 'Pago' });
+  expect(bride.parcelasDetalhes[0].status).toBe('Pago');
+  expect(result.second.changed).toBe(false);
+  expect(result.second.data).toEqual(result.first);
+});
+
+test('preserva pagamento Beleza ambíguo já vinculado a outra categoria', async ({ page }) => {
+  await page.goto('/index.html?test=1&authenticated=1');
+  const result = await page.evaluate(() => {
+    const legacy = defaultDB();
+    const payment = legacy.pagamentos.find(item => item.forn === 'Beleza');
+    payment.vinculoFornecedor = 'categoria:99. Serviço personalizado';
+    return migrateDB(legacy).data.pagamentos.find(item => item.vinculoFornecedor === 'categoria:99. Serviço personalizado');
+  });
+  expect(result).toMatchObject({ forn: 'Beleza', vinculoFornecedor: 'categoria:99. Serviço personalizado' });
+});

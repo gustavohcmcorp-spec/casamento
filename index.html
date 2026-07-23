@@ -402,6 +402,14 @@ function normalizeWeddingContent(data,defaults){
   if(splitBrideGroomTasks(data,defaults))changed=true;
   (data.categorias||[]).forEach(function(category){(category.opcoes||[]).forEach(function(option){if(applyJfChurrascoRule(option))changed=true;});});
   (data.pagamentos||[]).forEach(function(payment){if(applyJfChurrascoRule(payment))changed=true;});
+  (data.pagamentos||[]).forEach(function(payment){
+    var link=payment.vinculoFornecedor||'';
+    if(payment.forn==='Beleza'&&(!link||link==='categoria:16. Beleza (noiva e noivo)'||link==='categoria:16A. Beleza da noiva')){
+      payment.forn='Beleza da noiva';
+      if(link)payment.vinculoFornecedor='categoria:16A. Beleza da noiva';
+      changed=true;
+    }
+  });
   ['mensagens','preferenciasNoivos'].forEach(function(key){ if(!data[key]||typeof data[key]!=='object'){data[key]=JSON.parse(JSON.stringify(defaults[key]));changed=true;} else Object.keys(defaults[key]).forEach(function(field){if(data[key][field]==null){data[key][field]=defaults[key][field];changed=true;}}); });
   (data.cronograma||[]).forEach(function(phase){(phase.tarefas||[]).forEach(function(task){if((task.t||'').indexOf('Definir estilo, nº de convidados')===0){task.t='Definir estilo e prioridades do casamento';changed=true;}if(task.t==='Fechar o buffet com degustação e contrato (parrilla + costela fogo de chão)'){task.t='Fechar buffet, degustação e contrato';changed=true;}});});
   (data.diad||[]).forEach(function(item){if(item.ativ==='Início do jantar (parrilla / costela fogo de chão)'){item.ativ='Início do jantar';changed=true;}});
