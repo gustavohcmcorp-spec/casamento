@@ -189,13 +189,19 @@ test('mantém pagamentos da noiva e do noivo independentes', async ({ page }) =>
     const bride = DB.categorias.find(category => category.nome === '16A. Beleza da noiva');
     const groom = DB.categorias.find(category => category.nome === '16B. Beleza do noivo');
     bride.opcoes[0].nome = 'Salão da noiva';
+    bride.opcoes[0].valor = '1500';
+    bride.opcoes[0].tipoCobranca = 'fechado';
     groom.opcoes[0].nome = 'Barbearia do noivo';
+    groom.opcoes[0].valor = '350';
+    groom.opcoes[0].tipoCobranca = 'fechado';
 
     chooseSupplierOption(bride, bride.opcoes[0], 0);
     const countAfterBride = DB.pagamentos.length;
     chooseSupplierOption(groom, groom.opcoes[0], 0);
     const before = DB.pagamentos.map(payment => ({
       forn: payment.forn,
+      total: payment.total,
+      tipoCobranca: payment.tipoCobranca,
       vinculo: payment.vinculoFornecedor
     }));
     unchooseSupplierOption(groom);
@@ -205,6 +211,8 @@ test('mantém pagamentos da noiva e do noivo independentes', async ({ page }) =>
       before,
       after: DB.pagamentos.map(payment => ({
         forn: payment.forn,
+        total: payment.total,
+        tipoCobranca: payment.tipoCobranca,
         vinculo: payment.vinculoFornecedor
       }))
     };
@@ -212,11 +220,11 @@ test('mantém pagamentos da noiva e do noivo independentes', async ({ page }) =>
 
   expect(result.countAfterBride).toBe(1);
   expect(result.before).toEqual([
-    { forn: 'Salão da noiva', vinculo: 'categoria:16A. Beleza da noiva' },
-    { forn: 'Barbearia do noivo', vinculo: 'categoria:16B. Beleza do noivo' }
+    { forn: 'Salão da noiva', total: '1500', tipoCobranca: 'fechado', vinculo: 'categoria:16A. Beleza da noiva' },
+    { forn: 'Barbearia do noivo', total: '350', tipoCobranca: 'fechado', vinculo: 'categoria:16B. Beleza do noivo' }
   ]);
   expect(result.after).toEqual([
-    { forn: 'Salão da noiva', vinculo: 'categoria:16A. Beleza da noiva' }
+    { forn: 'Salão da noiva', total: '1500', tipoCobranca: 'fechado', vinculo: 'categoria:16A. Beleza da noiva' }
   ]);
 });
 
