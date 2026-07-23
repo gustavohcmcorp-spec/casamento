@@ -306,15 +306,40 @@ function applyJfChurrascoRule(record){
 }
 function splitBrideGroomSuppliers(data,defaults){
   var changed=false, categories=data.categorias||(data.categorias=[]);
+  function clone(value){return value===undefined?undefined:JSON.parse(JSON.stringify(value));}
   function byName(name){return categories.find(function(category){return category&&category.nome===name;});}
-  function defaultCategory(name){var category=defaults.categorias.find(function(item){return item.nome===name;});return category?JSON.parse(JSON.stringify(category)):null;}
+  function defaultCategory(name){var category=defaults.categorias.find(function(item){return item.nome===name;});return category?clone(category):null;}
+  function isBlankOption(option){return option&&!option.nome&&!option.contato&&!option.valor&&!option.inclui&&!option.id;}
+  function optionKey(option){return option&&option.id?('id:'+option.id):('data:'+[(option&&option.nome)||'',(option&&option.contato)||'',(option&&option.valor)||''].join('|').toLowerCase());}
+  function fillMissing(target,source){
+    Object.keys(source||{}).forEach(function(key){if(target[key]==null){target[key]=clone(source[key]);changed=true;}});
+  }
+  function mergeLegacy(bride,legacy){
+    ['pref','decisao','status','obs','naoTera'].forEach(function(key){if((bride[key]==null||bride[key]==='')&&legacy[key]!=null&&legacy[key]!==''){bride[key]=clone(legacy[key]);changed=true;}});
+    if(!Array.isArray(bride.opcoes))bride.opcoes=[];
+    var selectedIndex=null;
+    (legacy.opcoes||[]).forEach(function(option,index){
+      var key=optionKey(option),targetIndex=bride.opcoes.findIndex(function(item){return optionKey(item)===key&&key!=='data:||';});
+      if(targetIndex<0)targetIndex=bride.opcoes.findIndex(isBlankOption);
+      if(targetIndex<0){bride.opcoes.push(clone(option));targetIndex=bride.opcoes.length-1;changed=true;}
+      else if(isBlankOption(bride.opcoes[targetIndex])){bride.opcoes[targetIndex]=clone(option);changed=true;}
+      else fillMissing(bride.opcoes[targetIndex],option);
+      if(index===legacy.opcaoEscolhida)selectedIndex=targetIndex;
+    });
+    if(selectedIndex!=null&&(bride.opcaoEscolhida==null||!bride.opcoes[bride.opcaoEscolhida]||isBlankOption(bride.opcoes[bride.opcaoEscolhida]))){bride.opcaoEscolhida=selectedIndex;changed=true;}
+  }
   function migratePair(legacyName,brideName,groomName){
     var legacy=byName(legacyName),bride=byName(brideName),groom=byName(groomName),brideDefaults=defaultCategory(brideName);
     if(!bride&&legacy){bride=legacy;bride.nome=brideName;changed=true;}
     if(!bride){bride=brideDefaults;categories.push(bride);changed=true;}
-    if(brideDefaults&&JSON.stringify(bride.itens)!==JSON.stringify(brideDefaults.itens)){bride.itens=brideDefaults.itens;changed=true;}
-    if(!Array.isArray(bride.opcoes)){bride.opcoes=brideDefaults.opcoes;changed=true;}
+    if(legacy&&legacy!==bride){mergeLegacy(bride,legacy);categories.splice(categories.indexOf(legacy),1);changed=true;}
+    fillMissing(bride,brideDefaults);
+    if(JSON.stringify(bride.itens)!==JSON.stringify(brideDefaults.itens)){bride.itens=clone(brideDefaults.itens);changed=true;}
+    if(!Array.isArray(bride.opcoes)){bride.opcoes=clone(brideDefaults.opcoes);changed=true;}
     if(!groom){groom=defaultCategory(groomName);categories.push(groom);changed=true;}
+    else fillMissing(groom,defaultCategory(groomName));
+    if(!Array.isArray(groom.itens)){groom.itens=clone(defaultCategory(groomName).itens);changed=true;}
+    if(!Array.isArray(groom.opcoes)){groom.opcoes=clone(defaultCategory(groomName).opcoes);changed=true;}
   }
   migratePair('16. Beleza (noiva e noivo)','16A. Beleza da noiva','16B. Beleza do noivo');
   migratePair('17. Traje dos noivos','17A. Traje da noiva','17B. Traje do noivo');
@@ -332,21 +357,29 @@ function splitBrideGroomSuppliers(data,defaults){
 function splitBrideGroomTasks(data){
   var changed=false;
   function phaseTasks(fragment){var phase=(data.cronograma||[]).find(function(item){return (item.fase||'').indexOf(fragment)>=0;});return phase?phase.tarefas:[];}
-  function rename(tasks,oldText,newText,due){
-    var task=tasks.find(function(item){return item.t===oldText||item.t===newText;});
-    if(task&&task.t!==newText){task.t=newText;changed=true;}
-    if(task&&task.prazo!==due){task.prazo=due;changed=true;}
+  function mergeTask(target,source){
+    Object.keys(source||{}).forEach(function(key){if(key==='done'){if(source[key]&&!target[key]){target[key]=true;changed=true;}return;}if(key!=='t'&&key!=='prazo'&&(target[key]==null||target[key]==='')&&source[key]!=null&&source[key]!==''){target[key]=source[key];changed=true;}});
+  }
+  function reconcile(tasks,oldText,newText,due){
+    var oldTasks=tasks.filter(function(item){return item.t===oldText;}),newTasks=tasks.filter(function(item){return item.t===newText;}),task=newTasks[0]||oldTasks[0];
+    if(!task){task={t:newText,done:false,obs:'',prazo:due};tasks.push(task);changed=true;return task;}
+    oldTasks.concat(newTasks).forEach(function(item){if(item!==task)mergeTask(task,item);});
+    var legacyDue=oldTasks.map(function(item){return item.prazo;}).filter(Boolean)[0];
+    if(legacyDue&&task.prazo!==legacyDue){task.prazo=legacyDue;changed=true;}
+    else if(!task.prazo){task.prazo=due;changed=true;}
+    if(task.t!==newText){task.t=newText;changed=true;}
+    tasks.slice().forEach(function(item){if(item!==task&&(item.t===oldText||item.t===newText)){tasks.splice(tasks.indexOf(item),1);changed=true;}});
     return task;
   }
-  function add(tasks,text,due){if(!tasks.some(function(item){return item.t===text;})){tasks.push({t:text,done:false,obs:'',prazo:due});changed=true;}}
+  function add(tasks,text,due){var matches=tasks.filter(function(item){return item.t===text;}),task=matches[0];if(!task){tasks.push({t:text,done:false,obs:'',prazo:due});changed=true;return;}if(!task.prazo){task.prazo=due;changed=true;}matches.slice(1).forEach(function(item){mergeTask(task,item);tasks.splice(tasks.indexOf(item),1);changed=true;});}
   var eight=phaseTasks('8 a 10 meses'),six=phaseTasks('6 a 8 meses'),three=phaseTasks('3 meses'),one=phaseTasks('1 mês'),week=phaseTasks('1 semana');
-  rename(eight,'Escolher vestido da noiva e traje do noivo (iniciar)','Escolher vestido da noiva','2026-10-31');
+  reconcile(eight,'Escolher vestido da noiva e traje do noivo (iniciar)','Escolher vestido da noiva','2026-10-31');
   add(eight,'Escolher traje do noivo','2026-10-31');
   add(six,'Contratar beleza da noiva','2026-12-31');
-  rename(six,'Fazer teste de beleza (cabelo e maquiagem)','Fazer teste de cabelo e maquiagem da noiva','2027-02-28');
+  reconcile(six,'Fazer teste de beleza (cabelo e maquiagem)','Fazer teste de cabelo e maquiagem da noiva','2027-02-28');
   add(three,'Reservar cabelo e barba do noivo','2027-03-31');
-  rename(three,'Prova do vestido / ajustes','Fazer prova e ajustes do vestido da noiva','2027-04-30');
-  rename(one,'Última prova de vestido / traje','Concluir ajustes finais do vestido da noiva','2027-04-30');
+  reconcile(three,'Prova do vestido / ajustes','Fazer prova e ajustes do vestido da noiva','2027-04-30');
+  reconcile(one,'Última prova de vestido / traje','Concluir ajustes finais do vestido da noiva','2027-04-30');
   add(one,'Concluir ajustes finais do traje do noivo','2027-04-30');
   add(week,'Confirmar horários, endereços e transporte da noiva','2027-05-24');
   add(week,'Confirmar horários, endereços e transporte do noivo','2027-05-24');
@@ -395,7 +428,7 @@ function isLocalTestMode(hostname,search){ return isLocalTestHost(hostname,searc
 if(isLocalTestHost(location.hostname,location.search)) window.__test={makeId:makeId,migrateDB:migrateDB,validateDB:validateDB,isLocalTestMode:isLocalTestMode};
 
 function defaultDB(){ return {
- __v:4, noiva:'', noivo:'', local:'', cidade:'Goiânia/GO', hora:'16:00', meta:'30000', teto:'60000', convidadosPrevistos:'60',
+ __v:3, noiva:'', noivo:'', local:'', cidade:'Goiânia/GO', hora:'16:00', meta:'30000', teto:'60000', convidadosPrevistos:'60',
  categorias:[
   CAT('1. Espaço de eventos (local)','',['Cadeiras','Mesas','Toalhas / mesa posta','Talheres','Louças / pratos','Taças e copos','Cozinha equipada','Gerador / energia extra','Climatização (ar / ventilação)','Banheiros (qtde e higienização)','Estacionamento','Segurança do espaço','Limpeza pós-evento','Espaço para a cerimônia','Espaço para a festa','Suíte / sala dos noivos','Permite buffet externo?','Horário-limite de som / término','Taxa de rolha (bebida própria)','Seguro / caução','Acesso e horário para montagem']),
   CAT('2. Buffet / comida','',['Couvert / entradas','Estação de frios','Prato principal','Acompanhamentos / guarnições','Massa / macarrão','Saladas','Sobremesa','Louças e talheres do buffet','Garçons e maître inclusos?','Nº de garçons','Prova / degustação','Refeição dos fornecedores','Reposição à vontade?','Comida da madrugada (bem-casado / lanche)','Taxa de serviço (10%)']),
@@ -646,6 +679,7 @@ function renderFornecedores(){
 }
 function optBlock(cat,o,i){
   if(!o.itens)o.itens=cat.itens.map(function(item){return {label:item.label,inc:'',obs:''};});
+  var syncPayment=function(){syncSupplierOptionPayment(cat,o);};
   var included=h('details',{},h('summary',{},'Itens incluídos e pendências'));
   o.itens.forEach(function(item){ var note=h('input',{class:'cn obs',placeholder:'Se não incluso: onde contratar / observação',oninput:function(){item.obs=note.value;saveD();}}); note.value=item.obs||''; included.appendChild(h('div',{class:'inc'},h('div',{class:'lbl'},item.label),sel(item,'inc',['','Sim','Não','N/A']),note)); });
   var includedSummary=h('details',{},h('summary',{},'Resumo automático do que inclui'),h('p',{class:'hint'},(o.itens.filter(function(item){return item.inc==='Sim';}).map(function(item){return item.label;}).join(' • ')||'Marque os itens incluídos para gerar o resumo.')));
@@ -662,24 +696,33 @@ function optBlock(cat,o,i){
   var proposalChip=h('span',{class:'chip '+(cat.opcaoEscolhida===i?'g':'n')},cat.opcaoEscolhida===i?'Escolhida':proposalValue());
   var summary=h('summary',{},h('span',{},o.nome||('Opção '+(i+1))),proposalChip);
   var pricingHint=(o.tipoCobranca==='porPessoa'||o.tipoCobranca==='porFaixa')?h('p',{class:'hint','data-testid':'supplier-per-person-hint'},supplierEstimateText(o)):null;
-  var supplierPrice=moneyInput(o,o.tipoCobranca==='porPessoa'?'valorUnitario':'valor','0',function(){if(pricingHint)pricingHint.textContent=supplierEstimateText(o);proposalChip.textContent=proposalValue();});
-  var pricingFields=o.tipoCobranca==='porFaixa'?h('div',{class:'grid2'},field('Adultos (R$)',moneyInput(o,'valorAdulto','0',function(){pricingHint.textContent=supplierEstimateText(o);proposalChip.textContent=proposalValue();})),field('Crianças até 5 anos (R$)',moneyInput(o,'valorAte5','0',function(){pricingHint.textContent=supplierEstimateText(o);proposalChip.textContent=proposalValue();})),field('Crianças de 6 a 10 anos (R$)',moneyInput(o,'valor6a10','0',function(){pricingHint.textContent=supplierEstimateText(o);proposalChip.textContent=proposalValue();})),field('Crianças com 11 anos ou mais (R$)',moneyInput(o,'valor11mais','0',function(){pricingHint.textContent=supplierEstimateText(o);proposalChip.textContent=proposalValue();}))):null;
+  var supplierPrice=moneyInput(o,o.tipoCobranca==='porPessoa'?'valorUnitario':'valor','0',function(){if(pricingHint)pricingHint.textContent=supplierEstimateText(o);proposalChip.textContent=proposalValue();syncPayment();});
+  var pricingFields=o.tipoCobranca==='porFaixa'?h('div',{class:'grid2'},field('Adultos (R$)',moneyInput(o,'valorAdulto','0',function(){pricingHint.textContent=supplierEstimateText(o);proposalChip.textContent=proposalValue();syncPayment();})),field('Crianças até 5 anos (R$)',moneyInput(o,'valorAte5','0',function(){pricingHint.textContent=supplierEstimateText(o);proposalChip.textContent=proposalValue();syncPayment();})),field('Crianças de 6 a 10 anos (R$)',moneyInput(o,'valor6a10','0',function(){pricingHint.textContent=supplierEstimateText(o);proposalChip.textContent=proposalValue();syncPayment();})),field('Crianças com 11 anos ou mais (R$)',moneyInput(o,'valor11mais','0',function(){pricingHint.textContent=supplierEstimateText(o);proposalChip.textContent=proposalValue();syncPayment();}))):null;
   var packageFields=null;
   if(o.tipoCobranca==='pacote'){
     var packageList=h('div',{});
-    o.pacotes.forEach(function(item,index){var label=(item.nome||'Pacote')+(item.duracao?' · '+item.duracao:''),remove=h('button',{class:'btn del mini',onclick:function(){o.pacotes.splice(index,1);if(o.pacoteEscolhido===item.id)o.pacoteEscolhido='';save();renderFornecedores();}},'×'),selectPackage=h('button',{class:'btn '+(o.pacoteEscolhido===item.id?'p':'s')+' mini',onclick:function(){o.pacoteEscolhido=item.id;o.open=true;cat.open=true;save();renderFornecedores();}},o.pacoteEscolhido===item.id?'Selecionado: '+label:'Selecionar '+label);packageList.appendChild(h('div',{class:'grid2'},field('Pacote',tf(item,'nome','Ex.: Gold')),field('Duração',tf(item,'duracao','Ex.: 4 horas')),field('Valor (R$)',moneyInput(item,'valor','0',function(){proposalChip.textContent=proposalValue();})),field('Condição',selectPackage),remove));});
+    o.pacotes.forEach(function(item,index){var label=(item.nome||'Pacote')+(item.duracao?' · '+item.duracao:''),remove=h('button',{class:'btn del mini',onclick:function(){o.pacotes.splice(index,1);if(o.pacoteEscolhido===item.id)o.pacoteEscolhido='';syncPayment();save();renderFornecedores();}},'×'),selectPackage=h('button',{class:'btn '+(o.pacoteEscolhido===item.id?'p':'s')+' mini',onclick:function(){o.pacoteEscolhido=item.id;o.open=true;cat.open=true;syncPayment();save();renderFornecedores();}},o.pacoteEscolhido===item.id?'Selecionado: '+label:'Selecionar '+label);packageList.appendChild(h('div',{class:'grid2'},field('Pacote',tf(item,'nome','Ex.: Gold','text',syncPayment)),field('Duração',tf(item,'duracao','Ex.: 4 horas','text',syncPayment)),field('Valor (R$)',moneyInput(item,'valor','0',function(){proposalChip.textContent=proposalValue();syncPayment();})),field('Condição',selectPackage),remove));});
     packageFields=h('details',{open:'open'},h('summary',{},'Pacotes e duração'),h('p',{class:'hint'},'Cadastre cada combinação de pacote e horas com o valor fechado da proposta.'),packageList,h('button',{class:'btn s mini',onclick:function(){o.pacotes.push({id:makeId('pkg'),nome:'',duracao:'',valor:''});o.open=true;cat.open=true;save();renderFornecedores();}},'+ pacote'));
   }
   var proposalBody=h('div',{class:'proposal-body'},
     h('div',{class:'oh',style:'justify-content:flex-end'},h('div',{style:'display:flex;gap:5px;flex-wrap:wrap'},h('button',{class:'btn s mini',onclick:function(){cat.opcaoEscolhida===i?unchooseSupplierOption(cat):chooseSupplierOption(cat,o,i);}},cat.opcaoEscolhida===i?'Desfazer escolha':(o.tipoCobranca==='pacote'?(selectedPackage(o)?'Contratar '+packageDescription(o):'Selecione um pacote abaixo'):'Escolher esta opção')),h('button',{class:'btn del mini',onclick:function(){ if(cat.opcoes.length<=1)return; cat.opcoes.splice(i,1); save(); renderFornecedores(); }},'remover'))),
-    h('div',{class:'grid2'}, field('Fornecedor',tf(o,'nome','Nome')), field('Contato',tf(o,'contato','Tel / @ / site'))),
-    h('div',{class:'grid2'},field('Cobrança',sel(o,'tipoCobranca',[{value:'fechado',label:'Valor fechado'},{value:'porPessoa',label:'Por pessoa'},{value:'porFaixa',label:'Por pessoa com faixas'},{value:'pacote',label:'Pacotes por duração'}],function(){o.open=true;cat.open=true;save();renderFornecedores();})),(o.tipoCobranca==='fechado'||o.tipoCobranca==='porPessoa')?field(o.tipoCobranca==='porPessoa'?'Valor por pessoa':'Valor (R$)',supplierPrice):null),
+    h('div',{class:'grid2'}, field('Fornecedor',tf(o,'nome','Nome','text',syncPayment)), field('Contato',tf(o,'contato','Tel / @ / site'))),
+    h('div',{class:'grid2'},field('Cobrança',sel(o,'tipoCobranca',[{value:'fechado',label:'Valor fechado'},{value:'porPessoa',label:'Por pessoa'},{value:'porFaixa',label:'Por pessoa com faixas'},{value:'pacote',label:'Pacotes por duração'}],function(){o.open=true;cat.open=true;syncPayment();save();renderFornecedores();})),(o.tipoCobranca==='fechado'||o.tipoCobranca==='porPessoa')?field(o.tipoCobranca==='porPessoa'?'Valor por pessoa':'Valor (R$)',supplierPrice):null),
     pricingFields,pricingHint,packageFields,
     field('Complementos do que inclui', ta(o,'inclui','Adicione algo que não esteja no checklist')),
     includedSummary,included,visit,contract,critical
   );
   var proposal=h('details',{class:'opt',open:(o.open||cat.opcaoEscolhida===i)?'open':null,ontoggle:function(){o.open=proposal.open;saveD();}},summary,proposalBody);
   return proposal;
+}
+function updateLinkedSupplierPayment(cat,o,p){
+  var label=cat.nome.replace(/^\d+[A-Z]?\.\s*/,'').replace(/\s*\(.*/,''),link='categoria:'+cat.nome;
+  p.forn=o.nome||label;p.total=o.valor||p.total;p.tipoCobranca=o.tipoCobranca||'fechado';p.valorUnitario=o.valorUnitario||'';p.valorAdulto=o.valorAdulto||'';p.valorAte5=o.valorAte5||'';p.valor6a10=o.valor6a10||'';p.valor11mais=o.valor11mais||'';p.pacotes=JSON.parse(JSON.stringify(o.pacotes||[]));p.pacoteEscolhido=o.pacoteEscolhido||'';p.pacoteDescricao=packageDescription(o);p.vinculoFornecedor=link;o.pagamentoId=p.id;o.pagamentoVinculo=link;
+}
+function syncSupplierOptionPayment(cat,option){
+  if(!DB||!cat||!option||!Array.isArray(DB.pagamentos)||!cat.opcoes||cat.opcoes[cat.opcaoEscolhida]!==option)return;
+  var link=option.pagamentoVinculo||('categoria:'+cat.nome),payment=DB.pagamentos.find(function(item){return option.pagamentoId&&item.id===option.pagamentoId||item.vinculoFornecedor===link;});
+  if(payment){Object.assign(payment,ensurePayment(payment));updateLinkedSupplierPayment(cat,option,payment);}
 }
 function chooseSupplierOption(cat,o,index){
   var label=cat.nome.replace(/^\d+[A-Z]?\.\s*/,'').replace(/\s*\(.*/,''), key=label.toLowerCase().split(' ')[0], link='categoria:'+cat.nome;
@@ -691,7 +734,7 @@ function chooseSupplierOption(cat,o,index){
     else if(cat.nome!=='16B. Beleza do noivo')p=DB.pagamentos.find(function(item){return !item.vinculoFornecedor&&(item.forn||'').toLowerCase().indexOf(key)>=0;});
   }
   if(!p){p=ensurePayment({forn:label,total:''});DB.pagamentos.push(p);} else Object.assign(p,ensurePayment(p));
-  p.forn=o.nome||label; p.total=o.valor||p.total; p.tipoCobranca=o.tipoCobranca||'fechado'; p.valorUnitario=o.valorUnitario||''; p.valorAdulto=o.valorAdulto||''; p.valorAte5=o.valorAte5||''; p.valor6a10=o.valor6a10||''; p.valor11mais=o.valor11mais||''; p.pacotes=JSON.parse(JSON.stringify(o.pacotes||[])); p.pacoteEscolhido=o.pacoteEscolhido||''; p.pacoteDescricao=packageDescription(o); p.vinculoFornecedor=link; o.pagamentoId=p.id; o.pagamentoVinculo=link; o.open=true;
+  updateLinkedSupplierPayment(cat,o,p);o.open=true;
   cat.opcaoEscolhida=index; cat.decisao=p.forn; cat.status='Reservado'; cat.open=true; save(); renderFornecedores(); toast('Opção enviada para Pagamentos.');
 }
 function unchooseSupplierOption(cat){ var option=cat.opcoes[cat.opcaoEscolhida], paymentId=option&&option.pagamentoId, stableLink=option&&option.pagamentoVinculo, categoryLink='categoria:'+cat.nome, names=[option&&option.nome,cat.decisao].filter(Boolean).map(function(name){return name.trim().toLowerCase();}); DB.pagamentos=DB.pagamentos.filter(function(payment){var paymentName=(payment.forn||'').trim().toLowerCase();if(paymentId&&payment.id===paymentId)return false;if(payment.vinculoFornecedor&&(payment.vinculoFornecedor===stableLink||payment.vinculoFornecedor===categoryLink))return false;if(!paymentId&&!stableLink&&!payment.vinculoFornecedor&&names.indexOf(paymentName)>=0)return false;return true;}); if(option){delete option.pagamentoId;delete option.pagamentoVinculo;} delete cat.opcaoEscolhida; delete cat.decisao; if(cat.status==='Reservado')cat.status='Orçamento recebido'; cat.open=true; save();renderFornecedores();toast('Escolha e pagamento vinculado removidos.'); }

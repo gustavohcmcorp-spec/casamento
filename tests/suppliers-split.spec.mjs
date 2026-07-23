@@ -4,7 +4,7 @@ test('cria quatro categorias independentes para beleza e traje', async ({ page }
   await page.goto('/index.html?test=1&authenticated=1');
 
   const result = await page.evaluate(() => ({
-    version: defaultDB().__v,
+    version: migrateDB(defaultDB()).data.__v,
     names: defaultDB().categorias.map(category => category.nome),
     count: defaultDB().categorias.length
   }));
@@ -243,4 +243,152 @@ test('escolher fornecedor não conclui a pendência manual', async ({ page }) =>
   });
 
   expect(result).toEqual({ chosen: 0, taskDone: false });
+});
+
+test('instalação nova passa pela migração completa do esquema', async ({ page }) => {
+  await page.goto('/index.html?test=1&authenticated=1');
+
+  const result = await page.evaluate(() => migrateDB(defaultDB()).data);
+
+  expect(result.__v).toBe(4);
+  expect(result.config).toMatchObject({
+    noiva: '',
+    noivo: '',
+    cidade: 'Goiânia/GO'
+  });
+  expect(result.categorias).toHaveLength(24);
+});
+
+test('preserva prazo personalizado depois da migração inicial', async ({ page }) => {
+  await page.goto('/index.html?test=1&authenticated=1');
+
+  const result = await page.evaluate(() => {
+    const current = migrateDB(defaultDB()).data;
+    const task = current.cronograma
+      .flatMap(phase => phase.tarefas)
+      .find(item => item.t === 'Escolher vestido da noiva');
+    task.prazo = '2026-09-15';
+    return migrateDB(current).data.cronograma
+      .flatMap(phase => phase.tarefas)
+      .find(item => item.t === 'Escolher vestido da noiva');
+  });
+
+  expect(result.prazo).toBe('2026-09-15');
+});
+
+test('reconcilia categorias antigas e parciais sem duplicar', async ({ page }) => {
+  await page.goto('/index.html?test=1&authenticated=1');
+
+  const result = await page.evaluate(() => {
+    const current = migrateDB(defaultDB()).data;
+    const brideIndex = current.categorias.findIndex(item => item.nome === '16A. Beleza da noiva');
+    const groomIndex = current.categorias.findIndex(item => item.nome === '16B. Beleza do noivo');
+    current.categorias[brideIndex] = { nome: '16A. Beleza da noiva', status: '', obs: '', opcoes: [] };
+    current.categorias[groomIndex] = { nome: '16B. Beleza do noivo' };
+    current.categorias.splice(brideIndex + 1, 0, {
+      nome: '16. Beleza (noiva e noivo)',
+      status: 'Reservado',
+      obs: 'Informação antiga',
+      opcaoEscolhida: 0,
+      opcoes: [{ id: 'legacy-option', nome: 'Salão legado', valor: '1200' }]
+    });
+    return migrateDB(current).data.categorias;
+  });
+
+  expect(result).toHaveLength(24);
+  expect(result.filter(item => item.nome === '16. Beleza (noiva e noivo)')).toHaveLength(0);
+  expect(result.find(item => item.nome === '16A. Beleza da noiva')).toMatchObject({
+    status: 'Reservado',
+    obs: 'Informação antiga',
+    opcaoEscolhida: 0
+  });
+  expect(result.find(item => item.nome === '16A. Beleza da noiva').opcoes[0]).toMatchObject({
+    id: 'legacy-option',
+    nome: 'Salão legado',
+    valor: '1200'
+  });
+  expect(result.find(item => item.nome === '16B. Beleza do noivo').opcoes).toHaveLength(3);
+});
+
+test('mescla tarefa combinada coexistente e preserva seu estado', async ({ page }) => {
+  await page.goto('/index.html?test=1&authenticated=1');
+
+  const result = await page.evaluate(() => {
+    const current = migrateDB(defaultDB()).data;
+    const phase = current.cronograma.find(item => item.fase.includes('8 a 10 meses'));
+    const brideTask = phase.tarefas.find(item => item.t === 'Escolher vestido da noiva');
+    brideTask.done = false;
+    brideTask.obs = '';
+    phase.tarefas.push({
+      t: 'Escolher vestido da noiva e traje do noivo (iniciar)',
+      done: true,
+      obs: 'Concluído no registro antigo',
+      prazo: '2026-09-20'
+    });
+    return migrateDB(current).data.cronograma
+      .flatMap(item => item.tarefas)
+      .filter(item => item.t.includes('Escolher vestido da noiva'));
+  });
+
+  expect(result).toHaveLength(1);
+  expect(result[0]).toMatchObject({
+    t: 'Escolher vestido da noiva',
+    done: true,
+    obs: 'Concluído no registro antigo',
+    prazo: '2026-09-20'
+  });
+});
+
+test('atualiza o mesmo pagamento quando a proposta escolhida é editada', async ({ page }) => {
+  await page.goto('/index.html?test=1&authenticated=1');
+
+  const result = await page.evaluate(() => {
+    DB.pagamentos = [];
+    const category = DB.categorias.find(item => item.nome === '16A. Beleza da noiva');
+    const option = category.opcoes[0];
+    option.nome = 'Salão original';
+    option.valor = '1500';
+    option.tipoCobranca = 'fechado';
+    chooseSupplierOption(category, option, 0);
+    const payment = DB.pagamentos[0];
+    const originalId = payment.id;
+    payment.entradaValor = '300';
+    payment.parcelasDetalhes = [{ numero: 1, valor: '1200', status: 'Pago' }];
+    option.nome = 'Salão atualizado';
+    option.valor = '1800';
+    syncSupplierOptionPayment(category, option);
+    save();
+    return { originalId, payment: DB.pagamentos[0] };
+  });
+
+  expect(result.payment).toMatchObject({
+    id: result.originalId,
+    forn: 'Salão atualizado',
+    total: '1800',
+    entradaValor: '300',
+    parcelasDetalhes: [{ numero: 1, valor: '1200', status: 'Pago' }]
+  });
+});
+
+test('preserva ajuste feito diretamente no financeiro', async ({ page }) => {
+  await page.goto('/index.html?test=1&authenticated=1');
+
+  const result = await page.evaluate(() => {
+    DB.pagamentos = [];
+    const category = DB.categorias.find(item => item.nome === '16A. Beleza da noiva');
+    const option = category.opcoes[0];
+    option.nome = 'Salão escolhido';
+    option.valor = '1500';
+    chooseSupplierOption(category, option, 0);
+    DB.pagamentos[0].total = '1700';
+    DB.pagamentos[0].entradaValor = '400';
+    save();
+    return DB.pagamentos[0];
+  });
+
+  expect(result).toMatchObject({
+    forn: 'Salão escolhido',
+    total: '1700',
+    entradaValor: '400'
+  });
 });
