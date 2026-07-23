@@ -249,7 +249,7 @@ function CAT(nome,pref,itens){ return {nome:nome,pref:pref||'',itens:itens.map(f
 function opt(){ return {nome:'',contato:'',valor:'',inclui:''}; }
 function ck(t){ return {t:t,done:false,obs:''}; }
 
-var SCHEMA_VERSION=3;
+var SCHEMA_VERSION=4;
 var WEDDING_DATE_ISO='2027-05-29';
 function weddingDate(){ var p=WEDDING_DATE_ISO.split('-').map(Number); return new Date(p[0],p[1]-1,p[2]); }
 function weddingDateShort(){ var p=WEDDING_DATE_ISO.split('-'); return p[2]+'/'+p[1]+'/'+p[0]; }
@@ -303,10 +303,36 @@ function applyJfChurrascoRule(record){
   record.tipoCobranca='porFaixa';record.valorAdulto='112';record.valorAte5='0';record.valor6a10='56';record.valor11mais='112';record.regraFaixaAutomatica='jf-churrasco-v1';
   return true;
 }
+function splitBrideGroomSuppliers(data,defaults){
+  var changed=false, categories=data.categorias||(data.categorias=[]);
+  function byName(name){return categories.find(function(category){return category&&category.nome===name;});}
+  function defaultCategory(name){var category=defaults.categorias.find(function(item){return item.nome===name;});return category?JSON.parse(JSON.stringify(category)):null;}
+  function migratePair(legacyName,brideName,groomName){
+    var legacy=byName(legacyName),bride=byName(brideName),groom=byName(groomName),brideDefaults=defaultCategory(brideName);
+    if(!bride&&legacy){bride=legacy;bride.nome=brideName;changed=true;}
+    if(!bride){bride=brideDefaults;categories.push(bride);changed=true;}
+    if(brideDefaults&&JSON.stringify(bride.itens)!==JSON.stringify(brideDefaults.itens)){bride.itens=brideDefaults.itens;changed=true;}
+    if(!Array.isArray(bride.opcoes)){bride.opcoes=brideDefaults.opcoes;changed=true;}
+    if(!groom){groom=defaultCategory(groomName);categories.push(groom);changed=true;}
+  }
+  migratePair('16. Beleza (noiva e noivo)','16A. Beleza da noiva','16B. Beleza do noivo');
+  migratePair('17. Traje dos noivos','17A. Traje da noiva','17B. Traje do noivo');
+  var order=defaults.categorias.map(function(category){return category.nome;}),before=categories.map(function(category){return category.nome;}).join('|');
+  categories.sort(function(a,b){var ai=order.indexOf(a.nome),bi=order.indexOf(b.nome);return (ai<0?999:ai)-(bi<0?999:bi);});
+  if(before!==categories.map(function(category){return category.nome;}).join('|'))changed=true;
+  var links={
+    'categoria:16. Beleza (noiva e noivo)':'categoria:16A. Beleza da noiva',
+    'categoria:17. Traje dos noivos':'categoria:17A. Traje da noiva'
+  };
+  categories.forEach(function(category){(category.opcoes||[]).forEach(function(option){if(links[option.pagamentoVinculo]){option.pagamentoVinculo=links[option.pagamentoVinculo];changed=true;}});});
+  (data.pagamentos||[]).forEach(function(payment){if(links[payment.vinculoFornecedor]){payment.vinculoFornecedor=links[payment.vinculoFornecedor];changed=true;}});
+  return changed;
+}
 function normalizeWeddingContent(data,defaults){
   var changed=false;
   if(replaceLegacyWeddingDates(data))changed=true;
   if(normalizeGuestData(data))changed=true;
+  if(splitBrideGroomSuppliers(data,defaults))changed=true;
   (data.categorias||[]).forEach(function(category){(category.opcoes||[]).forEach(function(option){if(applyJfChurrascoRule(option))changed=true;});});
   (data.pagamentos||[]).forEach(function(payment){if(applyJfChurrascoRule(payment))changed=true;});
   ['mensagens','preferenciasNoivos'].forEach(function(key){ if(!data[key]||typeof data[key]!=='object'){data[key]=JSON.parse(JSON.stringify(defaults[key]));changed=true;} else Object.keys(defaults[key]).forEach(function(field){if(data[key][field]==null){data[key][field]=defaults[key][field];changed=true;}}); });
@@ -342,7 +368,7 @@ function isLocalTestMode(hostname,search){ return isLocalTestHost(hostname,searc
 if(isLocalTestHost(location.hostname,location.search)) window.__test={makeId:makeId,migrateDB:migrateDB,validateDB:validateDB,isLocalTestMode:isLocalTestMode};
 
 function defaultDB(){ return {
- __v:2, noiva:'', noivo:'', local:'', cidade:'Goiânia/GO', hora:'16:00', meta:'30000', teto:'60000', convidadosPrevistos:'60',
+ __v:4, noiva:'', noivo:'', local:'', cidade:'Goiânia/GO', hora:'16:00', meta:'30000', teto:'60000', convidadosPrevistos:'60',
  categorias:[
   CAT('1. Espaço de eventos (local)','',['Cadeiras','Mesas','Toalhas / mesa posta','Talheres','Louças / pratos','Taças e copos','Cozinha equipada','Gerador / energia extra','Climatização (ar / ventilação)','Banheiros (qtde e higienização)','Estacionamento','Segurança do espaço','Limpeza pós-evento','Espaço para a cerimônia','Espaço para a festa','Suíte / sala dos noivos','Permite buffet externo?','Horário-limite de som / término','Taxa de rolha (bebida própria)','Seguro / caução','Acesso e horário para montagem']),
   CAT('2. Buffet / comida','',['Couvert / entradas','Estação de frios','Prato principal','Acompanhamentos / guarnições','Massa / macarrão','Saladas','Sobremesa','Louças e talheres do buffet','Garçons e maître inclusos?','Nº de garçons','Prova / degustação','Refeição dos fornecedores','Reposição à vontade?','Comida da madrugada (bem-casado / lanche)','Taxa de serviço (10%)']),
@@ -359,8 +385,10 @@ function defaultDB(){ return {
   CAT('13. Cabine de fotos / totem 360','',['Tipo (cabine, totem 360, espelho mágico)','Tempo de operação','Impressão na hora','Adereços / props','Álbum de cópias','Atendente incluído','Personalização das fotos']),
   CAT('14. Celebrante / cerimônia','',['Tipo (civil / religioso / simbólico)','Celebrante confirmado','Ensaio da cerimônia','Roteiro personalizado','Assinatura / registro civil','Som e microfone da cerimônia']),
   CAT('15. Convites e papelaria','',['Save the date','Convite (impresso / digital)','Nº de convites','Menu impresso','Placas de mesa / seating','Plaquinhas / tags','Prazo de produção']),
-  CAT('16. Beleza (noiva e noivo)','',['Cabelo da noiva','Maquiagem da noiva','Teste de beleza','Day use / preparação','Cabelo e barba do noivo','Beleza madrinhas / mães','Retoque durante a festa']),
-  CAT('17. Traje dos noivos','',['Vestido da noiva (aluguel / compra)','Ajustes / provas','Sapatos da noiva','Véu / acessórios / joias','Terno do noivo','Sapatos e acessórios do noivo','Segundo traje (troca na festa)?']),
+  CAT('16A. Beleza da noiva','',['Cabelo da noiva','Maquiagem da noiva','Teste de cabelo e maquiagem','Day use / preparação da noiva','Beleza de madrinhas / mães','Retoque durante a festa']),
+  CAT('16B. Beleza do noivo','',['Corte de cabelo do noivo','Barba do noivo','Teste / corte anterior','Preparação e local no dia','Beleza de pais / padrinhos']),
+  CAT('17A. Traje da noiva','',['Vestido da noiva (aluguel / compra)','Provas e ajustes','Sapatos da noiva','Véu / acessórios / joias','Segundo traje da noiva (se houver)']),
+  CAT('17B. Traje do noivo','',['Terno do noivo','Provas e ajustes','Camisa / gravata / cinto','Sapatos e acessórios do noivo','Segundo traje do noivo (se houver)']),
   CAT('18. Alianças','',['Par de alianças','Gravação (nomes / data)','Ajuste de tamanho','Caixinha / porta-aliança','Seguro / garantia']),
   CAT('19. Assessoria / cerimonial','',['Nº de reuniões de planejamento','Nº de profissionais no dia','Horas de cobertura no dia D','Cronograma / roteiro do dia','Ensaio','Coordenação dos fornecedores','Kit emergência']),
   CAT('20. Transporte','',['Carro dos noivos','Transfer / van dos convidados','Translado hotel ↔ local','Manobrista','Carro reserva']),
