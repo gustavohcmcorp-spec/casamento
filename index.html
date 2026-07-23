@@ -248,6 +248,7 @@ function field(l,n){ return h('div',{class:'field'}, h('label',{class:'fl'},l), 
 function CAT(nome,pref,itens){ return {nome:nome,pref:pref||'',itens:itens.map(function(t){return {label:t,inc:'',obs:''};}),opcoes:[opt(),opt(),opt()],decisao:'',status:'',obs:''}; }
 function opt(){ return {nome:'',contato:'',valor:'',inclui:''}; }
 function ck(t){ return {t:t,done:false,obs:''}; }
+function ckd(t,prazo){ return {t:t,done:false,obs:'',prazo:prazo}; }
 
 var SCHEMA_VERSION=4;
 var WEDDING_DATE_ISO='2027-05-29';
@@ -328,11 +329,37 @@ function splitBrideGroomSuppliers(data,defaults){
   (data.pagamentos||[]).forEach(function(payment){if(links[payment.vinculoFornecedor]){payment.vinculoFornecedor=links[payment.vinculoFornecedor];changed=true;}});
   return changed;
 }
+function splitBrideGroomTasks(data){
+  var changed=false;
+  function phaseTasks(fragment){var phase=(data.cronograma||[]).find(function(item){return (item.fase||'').indexOf(fragment)>=0;});return phase?phase.tarefas:[];}
+  function rename(tasks,oldText,newText,due){
+    var task=tasks.find(function(item){return item.t===oldText||item.t===newText;});
+    if(task&&task.t!==newText){task.t=newText;changed=true;}
+    if(task&&task.prazo!==due){task.prazo=due;changed=true;}
+    return task;
+  }
+  function add(tasks,text,due){if(!tasks.some(function(item){return item.t===text;})){tasks.push({t:text,done:false,obs:'',prazo:due});changed=true;}}
+  var eight=phaseTasks('8 a 10 meses'),six=phaseTasks('6 a 8 meses'),three=phaseTasks('3 meses'),one=phaseTasks('1 mês'),week=phaseTasks('1 semana');
+  rename(eight,'Escolher vestido da noiva e traje do noivo (iniciar)','Escolher vestido da noiva','2026-10-31');
+  add(eight,'Escolher traje do noivo','2026-10-31');
+  add(six,'Contratar beleza da noiva','2026-12-31');
+  rename(six,'Fazer teste de beleza (cabelo e maquiagem)','Fazer teste de cabelo e maquiagem da noiva','2027-02-28');
+  add(three,'Reservar cabelo e barba do noivo','2027-03-31');
+  rename(three,'Prova do vestido / ajustes','Fazer prova e ajustes do vestido da noiva','2027-04-30');
+  rename(one,'Última prova de vestido / traje','Concluir ajustes finais do vestido da noiva','2027-04-30');
+  add(one,'Concluir ajustes finais do traje do noivo','2027-04-30');
+  add(week,'Confirmar horários, endereços e transporte da noiva','2027-05-24');
+  add(week,'Confirmar horários, endereços e transporte do noivo','2027-05-24');
+  var weekChecklist=data.essenciais&&data.essenciais.semana;
+  if(Array.isArray(weekChecklist)){var duplicate=weekChecklist.find(function(item){return item.t==='Última prova de traje / vestido';});if(duplicate){duplicate.t='Separar e conferir trajes, sapatos e acessórios';changed=true;}}
+  return changed;
+}
 function normalizeWeddingContent(data,defaults){
   var changed=false;
   if(replaceLegacyWeddingDates(data))changed=true;
   if(normalizeGuestData(data))changed=true;
   if(splitBrideGroomSuppliers(data,defaults))changed=true;
+  if(splitBrideGroomTasks(data))changed=true;
   (data.categorias||[]).forEach(function(category){(category.opcoes||[]).forEach(function(option){if(applyJfChurrascoRule(option))changed=true;});});
   (data.pagamentos||[]).forEach(function(payment){if(applyJfChurrascoRule(payment))changed=true;});
   ['mensagens','preferenciasNoivos'].forEach(function(key){ if(!data[key]||typeof data[key]!=='object'){data[key]=JSON.parse(JSON.stringify(defaults[key]));changed=true;} else Object.keys(defaults[key]).forEach(function(field){if(data[key][field]==null){data[key][field]=defaults[key][field];changed=true;}}); });
@@ -398,13 +425,13 @@ function defaultDB(){ return {
  cronograma:[
   {fase:'12+ meses antes (até mai/2026)',tarefas:[ck('Definir estilo e prioridades do casamento'),ck('Montar lista preliminar de convidados'),ck('Contratar a assessoria / cerimonial e alinhar expectativas'),ck('Visitar e reservar o espaço de eventos (contrato + sinal)'),ck('Confirmar a data com o espaço: '+weddingDateShort()+' (sábado)')]},
   {fase:'10 a 12 meses (jun–ago/2026)',tarefas:[ck('Fechar buffet, degustação e contrato'),ck('Contratar fotografia e vídeo'),ck('Definir padrinhos e madrinhas'),ck('Reservar DJ / música')]},
-  {fase:'8 a 10 meses (set–out/2026)',tarefas:[ck('Contratar decoração e flores'),ck('Escolher vestido da noiva e traje do noivo (iniciar)'),ck('Definir identidade visual / design dos convites'),ck('Contratar celebrante (civil / religioso)')]},
-  {fase:'6 a 8 meses (nov–dez/2026)',tarefas:[ck('Degustar e fechar bolo e doces'),ck('Fechar bebidas / bar'),ck('Fazer teste de beleza (cabelo e maquiagem)'),ck('Pesquisar e reservar a lua de mel')]},
+  {fase:'8 a 10 meses (set–out/2026)',tarefas:[ck('Contratar decoração e flores'),ckd('Escolher vestido da noiva','2026-10-31'),ckd('Escolher traje do noivo','2026-10-31'),ck('Definir identidade visual / design dos convites'),ck('Contratar celebrante (civil / religioso)')]},
+  {fase:'6 a 8 meses (nov–dez/2026)',tarefas:[ck('Degustar e fechar bolo e doces'),ck('Fechar bebidas / bar'),ckd('Contratar beleza da noiva','2026-12-31'),ckd('Fazer teste de cabelo e maquiagem da noiva','2027-02-28'),ck('Pesquisar e reservar a lua de mel')]},
   {fase:'4 a 6 meses (jan–fev/2027)',tarefas:[ck('Enviar save the date / convites'),ck('Fechar pista de dança, som e iluminação'),ck('Fechar carpete / passadeira e itens da entrada'),ck('Definir hospedagem para convidados de fora'),ck('Contratar cabine de fotos / totem 360')]},
-  {fase:'3 meses (fev–mar/2027)',tarefas:[ck('Dar entrada na habilitação de casamento no cartório (confirmar prazos em Goiânia)'),ck('Abrir confirmações de presença (RSVP)'),ck('Prova do vestido / ajustes'),ck('Fechar cardápio final e quantidades')]},
+  {fase:'3 meses (fev–mar/2027)',tarefas:[ck('Dar entrada na habilitação de casamento no cartório (confirmar prazos em Goiânia)'),ck('Abrir confirmações de presença (RSVP)'),ckd('Reservar cabelo e barba do noivo','2027-03-31'),ckd('Fazer prova e ajustes do vestido da noiva','2027-04-30'),ck('Fechar cardápio final e quantidades')]},
   {fase:'2 meses (mar/2027)',tarefas:[ck('Fechar layout das mesas e mapa de assentos'),ck('Montar playlist (tocar / NÃO tocar) para o DJ'),ck('Definir roteiro da cerimônia e da festa'),ck('Reconfirmar todos os contratos e datas de pagamento')]},
-  {fase:'1 mês (abr/2027)',tarefas:[ck('Confirmar RSVP final e fechar número de convidados'),ck('Acertar saldos / pagamentos com fornecedores'),ck('Montar o cronograma do dia (minuto a minuto) com a cerimonial'),ck('Ensaio da cerimônia'),ck('Última prova de vestido / traje'),ck('Comprar as alianças (se ainda não)')]},
-  {fase:'1 semana antes',tarefas:[ck('Reconfirmar horários com TODOS os fornecedores'),ck('Separar pagamentos e gorjetas em envelopes'),ck('Montar o kit emergência'),ck('Confirmar transporte dos noivos'),ck('Fazer test drive do trajeto até o local'),ck('Conferir documentos e alianças')]},
+  {fase:'1 mês (abr/2027)',tarefas:[ck('Confirmar RSVP final e fechar número de convidados'),ck('Acertar saldos / pagamentos com fornecedores'),ck('Montar o cronograma do dia (minuto a minuto) com a cerimonial'),ck('Ensaio da cerimônia'),ckd('Concluir ajustes finais do vestido da noiva','2027-04-30'),ckd('Concluir ajustes finais do traje do noivo','2027-04-30'),ck('Comprar as alianças (se ainda não)')]},
+  {fase:'1 semana antes',tarefas:[ck('Reconfirmar horários com TODOS os fornecedores'),ckd('Confirmar horários, endereços e transporte da noiva','2027-05-24'),ckd('Confirmar horários, endereços e transporte do noivo','2027-05-24'),ck('Separar pagamentos e gorjetas em envelopes'),ck('Montar o kit emergência'),ck('Confirmar transporte dos noivos'),ck('Fazer test drive do trajeto até o local'),ck('Conferir documentos e alianças')]},
   {fase:'Dia '+weddingDateShort()+' — Dia D',tarefas:[ck('Entregar cronograma impresso à cerimonial e fornecedores'),ck('Seguir a timeline do dia (aba Dia D)'),ck('Aproveitar! A cerimonial coordena tudo')]},
   {fase:'Pós-casamento',tarefas:[ck('Devolver itens alugados (traje etc.)'),ck('Pagar saldos e gorjetas pendentes'),ck('Registrar certidão de casamento e atualizar documentos'),ck('Agradecer convidados / enviar fotos'),ck('Acompanhar entrega de álbum e vídeo')]}
  ],
@@ -448,7 +475,7 @@ function defaultDB(){ return {
  preferenciasNoivos:{buffet:'Churrasco parrilla, costela fogo de chão, entradas de frios e massa (macarrão). Avaliar outras opções conforme o orçamento.'},
  essenciais:{
   kit:[ck('Costura: agulha, linhas (branca/preta), alfinetes, botões extras, fita dupla-face de tecido'),ck('Tesourinha e alfinete de segurança'),ck('Retoque: batom/gloss, pó compacto, grampos e presilhas, elástico de cabelo, spray fixador, esmalte transparente'),ck('Saúde: analgésico, antiácido, anti-inflamatório, band-aid, colírio, absorvente, remédio de uso pessoal'),ck('Praticidades: bala de menta, mini desodorante, lenços, cotonete, protetor de bolha, canudo (beber sem borrar o batom)'),ck('Power bank + cabo de celular'),ck('Guarda-chuva / capa (mesmo em maio)')],
-  semana:[ck('Reconfirmar horários com todos os fornecedores'),ck('Última prova de traje / vestido'),ck('Cabelo, unhas e depilação'),ck('Test drive do trajeto até o local'),ck('Montar envelopes de pagamento e gorjetas'),ck('Carregar celulares e power bank'),ck('Separar documentos, alianças e votos'),ck('Arrumar a mala da lua de mel'),ck('Descansar, hidratar e dormir bem na véspera')],
+  semana:[ck('Reconfirmar horários com todos os fornecedores'),ck('Separar e conferir trajes, sapatos e acessórios'),ck('Cabelo, unhas e depilação'),ck('Test drive do trajeto até o local'),ck('Montar envelopes de pagamento e gorjetas'),ck('Carregar celulares e power bank'),ck('Separar documentos, alianças e votos'),ck('Arrumar a mala da lua de mel'),ck('Descansar, hidratar e dormir bem na véspera')],
   levar:[ck('Alianças'),ck('Documentos dos noivos e das 2 testemunhas'),ck('Votos escritos'),ck('Roteiro impresso para cada fornecedor'),ck('Lista de contatos de todos os fornecedores'),ck('Sapato confortável reserva'),ck('Necessaire / kit emergência'),ck('Lista de músicas (tocar / NÃO tocar)'),ck('Muda de roupa para a saída / lua de mel')],
   gorjetas:[ck('Saldos finais separados por fornecedor (envelopes identificados)'),ck('Gorjetas (garçons, manobristas, DJ, seguranças...)'),ck('Definir quem entrega os envelopes (cerimonial)'),ck('Guardar todos os recibos')]
  },
