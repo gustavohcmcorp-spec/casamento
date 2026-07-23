@@ -1046,7 +1046,7 @@ function isAuthorizedUser(user){ return !!(user&&Object.keys(AUTH_PROFILES).some
 function startAuthenticatedSession(user,db,dbModule){
   if(!isAuthorizedUser(user)||authSessionStarted)return false;
   authSessionStarted=true;
-  syncService=makeSyncService(db,dbModule.ref,dbModule.onValue,dbModule.set);
+  syncService=makeSyncService(db,dbModule.ref,dbModule.onValue,dbModule.set,dbModule.update);
   startApp();
   syncService.flush();
   return true;
@@ -1072,8 +1072,9 @@ async function restoreSession(){
     });
   }catch(error){ setLoginMessage('Não foi possível restaurar o acesso. Selecione seu perfil e informe a senha.'); }
 }
-function makeSyncService(db,ref,onValue,set){
-  var root=ref(db,'casamento/shared'), busy=false;
+function cloneSyncData(value){return value===undefined?undefined:JSON.parse(JSON.stringify(value));}
+function makeSyncService(db,ref,onValue,set,update){
+  var root=ref(db,'casamento/shared'), busy=false, lastSnapshot=cloneSyncData(DB);
   function outbox(){ try{return JSON.parse(localStorage.getItem(OUTBOX_KEY)||'[]');}catch(e){return [];} }
   function store(items){ try{localStorage.setItem(OUTBOX_KEY,JSON.stringify(items));}catch(e){canStore=false;} }
   async function flush(){
@@ -1083,8 +1084,9 @@ function makeSyncService(db,ref,onValue,set){
       while(true){
         var items=outbox();
         if(!items.length)break;
-        var snapshot=items[items.length-1],sent=JSON.stringify(snapshot);
-        await set(root,snapshot);
+        var item=items[items.length-1],sent=JSON.stringify(item);
+        if(item&&item.mode==='patch'&&update)await update(root,item.payload);
+        else await set(root,item&&item.mode==='snapshot'?item.payload:item);
         var after=outbox(),latest=after[after.length-1];
         store(latest&&JSON.stringify(latest)!==sent?[latest]:[]);
       }
@@ -1094,7 +1096,17 @@ function makeSyncService(db,ref,onValue,set){
   }
   onValue(root,function(snapshot){ if(snapshot.exists()&&!outbox().length){ var migrated=migrateDB(snapshot.val()); DB=migrated.data; try{localStorage.setItem(KEY,JSON.stringify(DB));}catch(e){} showTab('inicio'); if(migrated.changed)set(root,DB).catch(function(){setSyncMessage('Offline — migração pendente');}); } });
   window.addEventListener('online',flush);
-  return {queueSnapshot:function(snapshot){ var items=outbox(); items.push(snapshot); store(items.slice(-20)); flush(); },flush:flush};
+  return {queueSnapshot:function(snapshot){
+    var items=outbox();
+    if(update){
+      var patch={},stamp=new Date().toISOString(),author=selectedProfile||'usuario';
+      Object.keys(snapshot||{}).forEach(function(key){if(JSON.stringify(snapshot[key])!==JSON.stringify(lastSnapshot&&lastSnapshot[key])){patch[key]=cloneSyncData(snapshot[key]);patch['__meta/modules/'+key]={updatedAt:stamp,updatedBy:author};}});
+      lastSnapshot=cloneSyncData(snapshot);
+      if(!Object.keys(patch).length)return;
+      items.push({mode:'patch',payload:patch});
+    }else items.push(snapshot);
+    store(items.slice(-20)); flush();
+  },flush:flush};
 }
 async function login(){
   if(!selectedProfile){ setLoginMessage('Escolha quem está acessando.'); return; }

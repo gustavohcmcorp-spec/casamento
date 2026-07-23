@@ -79,3 +79,33 @@ test('restauração migra backup antigo antes de substituir o banco', async ({ p
   expect(result.guest.nome).toBe('Família Silva');
   expect(result.payment).toMatchObject({ forn: 'Buffet', total: '5000' });
 });
+
+test('sincronização envia somente módulos alterados quando update está disponível', async ({ page }) => {
+  await page.goto('/index.html?test=1&authenticated=1');
+  const result = await page.evaluate(async () => {
+    localStorage.removeItem(OUTBOX_KEY);
+    const updates=[];
+    const service=makeSyncService({},() => ({}),() => {},async () => {},async (_root,patch) => updates.push(patch));
+    const next=JSON.parse(JSON.stringify(DB));
+    next.convidados[0].nome='Ana';
+    service.queueSnapshot(next);
+    await new Promise(resolve => setTimeout(resolve,20));
+    return updates[0];
+  });
+  expect(result.convidados[0].nome).toBe('Ana');
+  expect(result.pagamentos).toBeUndefined();
+  expect(Object.keys(result).some(key => key.startsWith('__meta/modules/convidados'))).toBe(true);
+});
+
+test('sincronização mantém gravação completa como compatibilidade sem update', async ({ page }) => {
+  await page.goto('/index.html?test=1&authenticated=1');
+  const result = await page.evaluate(async () => {
+    localStorage.removeItem(OUTBOX_KEY);
+    const writes=[];
+    const service=makeSyncService({},() => ({}),() => {},async (_root,snapshot) => writes.push(snapshot));
+    service.queueSnapshot({version:7});
+    await new Promise(resolve => setTimeout(resolve,20));
+    return writes[0];
+  });
+  expect(result).toEqual({version:7});
+});
