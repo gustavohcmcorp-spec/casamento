@@ -392,3 +392,49 @@ test('preserva ajuste feito diretamente no financeiro', async ({ page }) => {
     entradaValor: '400'
   });
 });
+
+test('editar só o nome da proposta não reverte valor ajustado no financeiro', async ({ page }) => {
+  await page.goto('/index.html?test=1&authenticated=1');
+
+  const result = await page.evaluate(() => {
+    DB.pagamentos = [];
+    const category = DB.categorias.find(item => item.nome === '16A. Beleza da noiva');
+    const option = category.opcoes[0];
+    option.nome = 'Salão escolhido';
+    option.valor = '1500';
+    chooseSupplierOption(category, option, 0);
+    const paymentId = DB.pagamentos[0].id;
+    DB.pagamentos[0].total = '1700';
+    option.nome = 'Novo nome do salão';
+    syncSupplierOptionPayment(category, option, ['forn']);
+    save();
+    return { paymentId, payment: DB.pagamentos[0] };
+  });
+
+  expect(result.payment).toMatchObject({
+    id: result.paymentId,
+    forn: 'Novo nome do salão',
+    total: '1700'
+  });
+});
+
+test('completa fase parcial sem lista de tarefas', async ({ page }) => {
+  await page.goto('/index.html?test=1&authenticated=1');
+
+  const result = await page.evaluate(() => {
+    const current = migrateDB(defaultDB()).data;
+    current.cronograma.find(phase => phase.fase.includes('8 a 10 meses')).tarefas = null;
+    try {
+      const migrated = migrateDB(current).data;
+      const phase = migrated.cronograma.find(item => item.fase.includes('8 a 10 meses'));
+      return { error: '', tasks: phase.tarefas };
+    } catch (error) {
+      return { error: error.message, tasks: null };
+    }
+  });
+
+  expect(result.error).toBe('');
+  expect(Array.isArray(result.tasks)).toBe(true);
+  expect(result.tasks.some(task => task.t === 'Escolher vestido da noiva')).toBe(true);
+  expect(result.tasks.some(task => task.t === 'Escolher traje do noivo')).toBe(true);
+});

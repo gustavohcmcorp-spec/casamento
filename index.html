@@ -354,9 +354,16 @@ function splitBrideGroomSuppliers(data,defaults){
   (data.pagamentos||[]).forEach(function(payment){if(links[payment.vinculoFornecedor]){payment.vinculoFornecedor=links[payment.vinculoFornecedor];changed=true;}});
   return changed;
 }
-function splitBrideGroomTasks(data){
+function splitBrideGroomTasks(data,defaults){
   var changed=false;
-  function phaseTasks(fragment){var phase=(data.cronograma||[]).find(function(item){return (item.fase||'').indexOf(fragment)>=0;});return phase?phase.tarefas:[];}
+  function clone(value){return JSON.parse(JSON.stringify(value));}
+  if(!Array.isArray(data.cronograma)){data.cronograma=clone(defaults.cronograma);changed=true;}
+  function phaseTasks(fragment){
+    var phase=data.cronograma.find(function(item){return (item.fase||'').indexOf(fragment)>=0;}),defaultPhase=(defaults.cronograma||[]).find(function(item){return (item.fase||'').indexOf(fragment)>=0;});
+    if(!phase){phase=defaultPhase?clone(defaultPhase):{fase:fragment,tarefas:[]};data.cronograma.push(phase);changed=true;}
+    else if(!Array.isArray(phase.tarefas)){phase.tarefas=defaultPhase?clone(defaultPhase.tarefas):[];changed=true;}
+    return phase.tarefas;
+  }
   function mergeTask(target,source){
     Object.keys(source||{}).forEach(function(key){if(key==='done'){if(source[key]&&!target[key]){target[key]=true;changed=true;}return;}if(key!=='t'&&key!=='prazo'&&(target[key]==null||target[key]==='')&&source[key]!=null&&source[key]!==''){target[key]=source[key];changed=true;}});
   }
@@ -392,7 +399,7 @@ function normalizeWeddingContent(data,defaults){
   if(replaceLegacyWeddingDates(data))changed=true;
   if(normalizeGuestData(data))changed=true;
   if(splitBrideGroomSuppliers(data,defaults))changed=true;
-  if(splitBrideGroomTasks(data))changed=true;
+  if(splitBrideGroomTasks(data,defaults))changed=true;
   (data.categorias||[]).forEach(function(category){(category.opcoes||[]).forEach(function(option){if(applyJfChurrascoRule(option))changed=true;});});
   (data.pagamentos||[]).forEach(function(payment){if(applyJfChurrascoRule(payment))changed=true;});
   ['mensagens','preferenciasNoivos'].forEach(function(key){ if(!data[key]||typeof data[key]!=='object'){data[key]=JSON.parse(JSON.stringify(defaults[key]));changed=true;} else Object.keys(defaults[key]).forEach(function(field){if(data[key][field]==null){data[key][field]=defaults[key][field];changed=true;}}); });
@@ -679,7 +686,7 @@ function renderFornecedores(){
 }
 function optBlock(cat,o,i){
   if(!o.itens)o.itens=cat.itens.map(function(item){return {label:item.label,inc:'',obs:''};});
-  var syncPayment=function(){syncSupplierOptionPayment(cat,o);};
+  var syncPayment=function(fields){syncSupplierOptionPayment(cat,o,fields);};
   var included=h('details',{},h('summary',{},'Itens incluídos e pendências'));
   o.itens.forEach(function(item){ var note=h('input',{class:'cn obs',placeholder:'Se não incluso: onde contratar / observação',oninput:function(){item.obs=note.value;saveD();}}); note.value=item.obs||''; included.appendChild(h('div',{class:'inc'},h('div',{class:'lbl'},item.label),sel(item,'inc',['','Sim','Não','N/A']),note)); });
   var includedSummary=h('details',{},h('summary',{},'Resumo automático do que inclui'),h('p',{class:'hint'},(o.itens.filter(function(item){return item.inc==='Sim';}).map(function(item){return item.label;}).join(' • ')||'Marque os itens incluídos para gerar o resumo.')));
@@ -696,18 +703,18 @@ function optBlock(cat,o,i){
   var proposalChip=h('span',{class:'chip '+(cat.opcaoEscolhida===i?'g':'n')},cat.opcaoEscolhida===i?'Escolhida':proposalValue());
   var summary=h('summary',{},h('span',{},o.nome||('Opção '+(i+1))),proposalChip);
   var pricingHint=(o.tipoCobranca==='porPessoa'||o.tipoCobranca==='porFaixa')?h('p',{class:'hint','data-testid':'supplier-per-person-hint'},supplierEstimateText(o)):null;
-  var supplierPrice=moneyInput(o,o.tipoCobranca==='porPessoa'?'valorUnitario':'valor','0',function(){if(pricingHint)pricingHint.textContent=supplierEstimateText(o);proposalChip.textContent=proposalValue();syncPayment();});
-  var pricingFields=o.tipoCobranca==='porFaixa'?h('div',{class:'grid2'},field('Adultos (R$)',moneyInput(o,'valorAdulto','0',function(){pricingHint.textContent=supplierEstimateText(o);proposalChip.textContent=proposalValue();syncPayment();})),field('Crianças até 5 anos (R$)',moneyInput(o,'valorAte5','0',function(){pricingHint.textContent=supplierEstimateText(o);proposalChip.textContent=proposalValue();syncPayment();})),field('Crianças de 6 a 10 anos (R$)',moneyInput(o,'valor6a10','0',function(){pricingHint.textContent=supplierEstimateText(o);proposalChip.textContent=proposalValue();syncPayment();})),field('Crianças com 11 anos ou mais (R$)',moneyInput(o,'valor11mais','0',function(){pricingHint.textContent=supplierEstimateText(o);proposalChip.textContent=proposalValue();syncPayment();}))):null;
+  var supplierPrice=moneyInput(o,o.tipoCobranca==='porPessoa'?'valorUnitario':'valor','0',function(){if(pricingHint)pricingHint.textContent=supplierEstimateText(o);proposalChip.textContent=proposalValue();syncPayment([o.tipoCobranca==='porPessoa'?'valorUnitario':'total']);});
+  var pricingFields=o.tipoCobranca==='porFaixa'?h('div',{class:'grid2'},field('Adultos (R$)',moneyInput(o,'valorAdulto','0',function(){pricingHint.textContent=supplierEstimateText(o);proposalChip.textContent=proposalValue();syncPayment(['valorAdulto']);})),field('Crianças até 5 anos (R$)',moneyInput(o,'valorAte5','0',function(){pricingHint.textContent=supplierEstimateText(o);proposalChip.textContent=proposalValue();syncPayment(['valorAte5']);})),field('Crianças de 6 a 10 anos (R$)',moneyInput(o,'valor6a10','0',function(){pricingHint.textContent=supplierEstimateText(o);proposalChip.textContent=proposalValue();syncPayment(['valor6a10']);})),field('Crianças com 11 anos ou mais (R$)',moneyInput(o,'valor11mais','0',function(){pricingHint.textContent=supplierEstimateText(o);proposalChip.textContent=proposalValue();syncPayment(['valor11mais']);}))):null;
   var packageFields=null;
   if(o.tipoCobranca==='pacote'){
     var packageList=h('div',{});
-    o.pacotes.forEach(function(item,index){var label=(item.nome||'Pacote')+(item.duracao?' · '+item.duracao:''),remove=h('button',{class:'btn del mini',onclick:function(){o.pacotes.splice(index,1);if(o.pacoteEscolhido===item.id)o.pacoteEscolhido='';syncPayment();save();renderFornecedores();}},'×'),selectPackage=h('button',{class:'btn '+(o.pacoteEscolhido===item.id?'p':'s')+' mini',onclick:function(){o.pacoteEscolhido=item.id;o.open=true;cat.open=true;syncPayment();save();renderFornecedores();}},o.pacoteEscolhido===item.id?'Selecionado: '+label:'Selecionar '+label);packageList.appendChild(h('div',{class:'grid2'},field('Pacote',tf(item,'nome','Ex.: Gold','text',syncPayment)),field('Duração',tf(item,'duracao','Ex.: 4 horas','text',syncPayment)),field('Valor (R$)',moneyInput(item,'valor','0',function(){proposalChip.textContent=proposalValue();syncPayment();})),field('Condição',selectPackage),remove));});
+    o.pacotes.forEach(function(item,index){var label=(item.nome||'Pacote')+(item.duracao?' · '+item.duracao:''),syncPackage=function(){syncPayment(['package']);},remove=h('button',{class:'btn del mini',onclick:function(){o.pacotes.splice(index,1);if(o.pacoteEscolhido===item.id)o.pacoteEscolhido='';syncPackage();save();renderFornecedores();}},'×'),selectPackage=h('button',{class:'btn '+(o.pacoteEscolhido===item.id?'p':'s')+' mini',onclick:function(){o.pacoteEscolhido=item.id;o.open=true;cat.open=true;syncPackage();save();renderFornecedores();}},o.pacoteEscolhido===item.id?'Selecionado: '+label:'Selecionar '+label);packageList.appendChild(h('div',{class:'grid2'},field('Pacote',tf(item,'nome','Ex.: Gold','text',syncPackage)),field('Duração',tf(item,'duracao','Ex.: 4 horas','text',syncPackage)),field('Valor (R$)',moneyInput(item,'valor','0',function(){proposalChip.textContent=proposalValue();syncPackage();})),field('Condição',selectPackage),remove));});
     packageFields=h('details',{open:'open'},h('summary',{},'Pacotes e duração'),h('p',{class:'hint'},'Cadastre cada combinação de pacote e horas com o valor fechado da proposta.'),packageList,h('button',{class:'btn s mini',onclick:function(){o.pacotes.push({id:makeId('pkg'),nome:'',duracao:'',valor:''});o.open=true;cat.open=true;save();renderFornecedores();}},'+ pacote'));
   }
   var proposalBody=h('div',{class:'proposal-body'},
     h('div',{class:'oh',style:'justify-content:flex-end'},h('div',{style:'display:flex;gap:5px;flex-wrap:wrap'},h('button',{class:'btn s mini',onclick:function(){cat.opcaoEscolhida===i?unchooseSupplierOption(cat):chooseSupplierOption(cat,o,i);}},cat.opcaoEscolhida===i?'Desfazer escolha':(o.tipoCobranca==='pacote'?(selectedPackage(o)?'Contratar '+packageDescription(o):'Selecione um pacote abaixo'):'Escolher esta opção')),h('button',{class:'btn del mini',onclick:function(){ if(cat.opcoes.length<=1)return; cat.opcoes.splice(i,1); save(); renderFornecedores(); }},'remover'))),
-    h('div',{class:'grid2'}, field('Fornecedor',tf(o,'nome','Nome','text',syncPayment)), field('Contato',tf(o,'contato','Tel / @ / site'))),
-    h('div',{class:'grid2'},field('Cobrança',sel(o,'tipoCobranca',[{value:'fechado',label:'Valor fechado'},{value:'porPessoa',label:'Por pessoa'},{value:'porFaixa',label:'Por pessoa com faixas'},{value:'pacote',label:'Pacotes por duração'}],function(){o.open=true;cat.open=true;syncPayment();save();renderFornecedores();})),(o.tipoCobranca==='fechado'||o.tipoCobranca==='porPessoa')?field(o.tipoCobranca==='porPessoa'?'Valor por pessoa':'Valor (R$)',supplierPrice):null),
+    h('div',{class:'grid2'}, field('Fornecedor',tf(o,'nome','Nome','text',function(){syncPayment(['forn']);})), field('Contato',tf(o,'contato','Tel / @ / site'))),
+    h('div',{class:'grid2'},field('Cobrança',sel(o,'tipoCobranca',[{value:'fechado',label:'Valor fechado'},{value:'porPessoa',label:'Por pessoa'},{value:'porFaixa',label:'Por pessoa com faixas'},{value:'pacote',label:'Pacotes por duração'}],function(){o.open=true;cat.open=true;syncPayment(['tipoCobranca','total','valorUnitario','valorAdulto','valorAte5','valor6a10','valor11mais','package']);save();renderFornecedores();})),(o.tipoCobranca==='fechado'||o.tipoCobranca==='porPessoa')?field(o.tipoCobranca==='porPessoa'?'Valor por pessoa':'Valor (R$)',supplierPrice):null),
     pricingFields,pricingHint,packageFields,
     field('Complementos do que inclui', ta(o,'inclui','Adicione algo que não esteja no checklist')),
     includedSummary,included,visit,contract,critical
@@ -715,14 +722,19 @@ function optBlock(cat,o,i){
   var proposal=h('details',{class:'opt',open:(o.open||cat.opcaoEscolhida===i)?'open':null,ontoggle:function(){o.open=proposal.open;saveD();}},summary,proposalBody);
   return proposal;
 }
-function updateLinkedSupplierPayment(cat,o,p){
-  var label=cat.nome.replace(/^\d+[A-Z]?\.\s*/,'').replace(/\s*\(.*/,''),link='categoria:'+cat.nome;
-  p.forn=o.nome||label;p.total=o.valor||p.total;p.tipoCobranca=o.tipoCobranca||'fechado';p.valorUnitario=o.valorUnitario||'';p.valorAdulto=o.valorAdulto||'';p.valorAte5=o.valorAte5||'';p.valor6a10=o.valor6a10||'';p.valor11mais=o.valor11mais||'';p.pacotes=JSON.parse(JSON.stringify(o.pacotes||[]));p.pacoteEscolhido=o.pacoteEscolhido||'';p.pacoteDescricao=packageDescription(o);p.vinculoFornecedor=link;o.pagamentoId=p.id;o.pagamentoVinculo=link;
+function updateLinkedSupplierPayment(cat,o,p,fields){
+  var label=cat.nome.replace(/^\d+[A-Z]?\.\s*/,'').replace(/\s*\(.*/,''),link='categoria:'+cat.nome,all=!Array.isArray(fields),wants=function(field){return all||fields.indexOf(field)>=0;};
+  if(wants('forn'))p.forn=o.nome||label;
+  if(wants('total'))p.total=all?(o.valor||p.total):(o.valor==null?'':o.valor);
+  if(wants('tipoCobranca'))p.tipoCobranca=o.tipoCobranca||'fechado';
+  ['valorUnitario','valorAdulto','valorAte5','valor6a10','valor11mais'].forEach(function(field){if(wants(field))p[field]=o[field]||'';});
+  if(wants('package')){p.pacotes=JSON.parse(JSON.stringify(o.pacotes||[]));p.pacoteEscolhido=o.pacoteEscolhido||'';p.pacoteDescricao=packageDescription(o);}
+  p.vinculoFornecedor=link;o.pagamentoId=p.id;o.pagamentoVinculo=link;
 }
-function syncSupplierOptionPayment(cat,option){
+function syncSupplierOptionPayment(cat,option,fields){
   if(!DB||!cat||!option||!Array.isArray(DB.pagamentos)||!cat.opcoes||cat.opcoes[cat.opcaoEscolhida]!==option)return;
   var link=option.pagamentoVinculo||('categoria:'+cat.nome),payment=DB.pagamentos.find(function(item){return option.pagamentoId&&item.id===option.pagamentoId||item.vinculoFornecedor===link;});
-  if(payment){Object.assign(payment,ensurePayment(payment));updateLinkedSupplierPayment(cat,option,payment);}
+  if(payment){Object.assign(payment,ensurePayment(payment));updateLinkedSupplierPayment(cat,option,payment,fields);}
 }
 function chooseSupplierOption(cat,o,index){
   var label=cat.nome.replace(/^\d+[A-Z]?\.\s*/,'').replace(/\s*\(.*/,''), key=label.toLowerCase().split(' ')[0], link='categoria:'+cat.nome;
