@@ -437,7 +437,7 @@ function migrateDB(raw){
   normalizeWeddingContent(data,defaults);
   return {data:data,changed:true};
 }
-function validateDB(data){ return !!(data&&data.__v===SCHEMA_VERSION&&data.config&&Array.isArray(data.convidados)); }
+function validateDB(data){ return !!(data&&data.__v===SCHEMA_VERSION&&data.config&&Array.isArray(data.convidados)&&Array.isArray(data.categorias)&&Array.isArray(data.pagamentos)&&Array.isArray(data.cronograma)); }
 function isLocalTestHost(hostname,search){ return (hostname==='127.0.0.1'||hostname==='localhost')&&new URLSearchParams(search).has('test'); }
 function isLocalTestMode(hostname,search){ return isLocalTestHost(hostname,search)&&new URLSearchParams(search).has('authenticated'); }
 if(isLocalTestHost(location.hostname,location.search)) window.__test={makeId:makeId,migrateDB:migrateDB,validateDB:validateDB,isLocalTestMode:isLocalTestMode};
@@ -1021,8 +1021,8 @@ function openRestore(){
   document.getElementById('ov').className='overlay show';
 }
 function doRestore(txt){
-  try{ var d=JSON.parse(txt); if(!d||!d.categorias) throw 0; DB=d; var def=defaultDB(); for(var k in def){ if(!(k in DB)) DB[k]=def[k]; } if(!DB.essenciais||Array.isArray(DB.essenciais)) DB.essenciais=def.essenciais; save(); closeModal(); showTab('inicio'); toast('Backup restaurado!'); }
-  catch(e){ toast('Código inválido — confira e tente de novo.'); }
+  try{ var parsed=JSON.parse(txt), migrated=migrateDB(parsed), restored=migrated.data; if(!validateDB(restored)) throw 0; DB=restored; save(); closeModal(); showTab('inicio'); toast('Backup restaurado com segurança!'); }
+  catch(e){ toast('Backup inválido — nenhum dado foi alterado.'); }
 }
 function copyText(txt,ta){
   function ok(){ toast('Copiado!'); } function fb(){ try{ ta.focus(); ta.select(); ta.setSelectionRange(0,999999); document.execCommand('copy'); toast('Copiado!'); }catch(e){ toast('Selecione o texto e copie manualmente.'); } }

@@ -49,3 +49,33 @@ test('desfazer fornecedor preserva também pagamento ainda vazio', async ({ page
   expect(result.payments).toHaveLength(1);
   expect(result.payments[0]).toMatchObject({ id: result.id, forn: 'Barbearia', vinculoFornecedor: '' });
 });
+
+test('restauração inválida não substitui os dados atuais', async ({ page }) => {
+  await page.goto('/index.html?test=1&authenticated=1');
+  const result = await page.evaluate(() => {
+    DB.noiva = 'Dado preservado';
+    DB.pagamentos[0].total = '9876';
+    doRestore(JSON.stringify({ categorias: 'inválido' }));
+    return { noiva: DB.noiva, total: DB.pagamentos[0].total };
+  });
+  expect(result).toEqual({ noiva: 'Dado preservado', total: '9876' });
+});
+
+test('restauração migra backup antigo antes de substituir o banco', async ({ page }) => {
+  await page.goto('/index.html?test=1&authenticated=1');
+  const result = await page.evaluate(() => {
+    doRestore(JSON.stringify({
+      __v: 2,
+      noiva: 'Gleicianne',
+      noivo: 'Gustavo',
+      categorias: defaultDB().categorias,
+      convidados: [{ nome: 'Família Silva', conf: 'Pendente' }],
+      pagamentos: [{ forn: 'Buffet', total: '5000' }]
+    }));
+    return { version: DB.__v, noiva: DB.config.noiva, guest: DB.convidados[0], payment: DB.pagamentos[0] };
+  });
+  expect(result.version).toBe(4);
+  expect(result.noiva).toBe('Gleicianne');
+  expect(result.guest.nome).toBe('Família Silva');
+  expect(result.payment).toMatchObject({ forn: 'Buffet', total: '5000' });
+});
