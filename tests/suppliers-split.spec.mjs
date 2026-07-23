@@ -224,7 +224,8 @@ test('mantém pagamentos da noiva e do noivo independentes', async ({ page }) =>
     { forn: 'Barbearia do noivo', total: '350', tipoCobranca: 'fechado', vinculo: 'categoria:16B. Beleza do noivo' }
   ]);
   expect(result.after).toEqual([
-    { forn: 'Salão da noiva', total: '1500', tipoCobranca: 'fechado', vinculo: 'categoria:16A. Beleza da noiva' }
+    { forn: 'Salão da noiva', total: '1500', tipoCobranca: 'fechado', vinculo: 'categoria:16A. Beleza da noiva' },
+    { forn: 'Barbearia do noivo', total: '350', tipoCobranca: 'fechado', vinculo: '' }
   ]);
 });
 
