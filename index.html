@@ -223,6 +223,23 @@ function paymentEntryPaid(p){ return p.entradaStatus==='Pago'?paymentEntry(p):0;
 function paymentPaid(p){ p=ensurePayment(p); if(p.condicaoPagamento==='avista')return p.avistaPago?paymentCommitted(p):0; if((p.parcelasDetalhes||[]).length)return p.parcelasDetalhes.filter(function(x){return x.status==='Pago';}).reduce(function(a,x){return a+pn(x.valor);},0)+paymentEntryPaid(p); return p.pago!==undefined&&p.pago!==''?pn(p.pago):paymentEntryPaid(p); }
 function paymentCommitted(p){ p=ensurePayment(p); return p.condicaoPagamento==='avista'&&p.formaPagamento==='pix'?paymentPix(p):paymentTotal(p); }
 function paymentBalance(p){ return Math.max(0,paymentCommitted(p)-paymentPaid(p)); }
+function supplierReadiness(cat){
+  if(cat.naoTera==='Não terá')return {stage:'Não se aplica',score:100,pending:[]};
+  var option=cat.opcoes&&cat.opcoes[cat.opcaoEscolhida],pending=[];
+  if(!option)pending.push('Escolher fornecedor');
+  if(option&&option.contratoStatus!=='Assinado'&&option.contratoStatus!=='N/A')pending.push('Confirmar contrato');
+  if(option){
+    var scope=option.itens||(cat.itens||[]).map(function(item){return {label:item.label,inc:'',obs:''};});
+    if(scope.some(function(item){return item.inc!=='Sim'&&item.inc!=='N/A';}))pending.push('Resolver itens do escopo');
+    if((option.contratoPontos||[]).some(function(point){return point.status!=='Conferido'&&point.status!=='N/A';}))pending.push('Conferir pontos críticos');
+  }
+  var payment=option&&(DB.pagamentos||[]).find(function(item){return item.id===option.pagamentoId||item.vinculoFornecedor==='categoria:'+cat.nome;});
+  if(option&&(!payment||paymentCommitted(payment)<=0))pending.push('Definir valor financeiro');
+  if(option&&!cat.operacaoConfirmada)pending.push('Confirmar operação do dia');
+  var score=Math.max(0,Math.round((6-pending.length)/6*100));
+  var stage=!option?'Em pesquisa':pending.length===0?'Pronto':option.contratoStatus==='Assinado'?'Contratado':'Escolhido';
+  return {stage:stage,score:score,pending:pending};
+}
 function nextPendingPayment(){
   var next=null;
   (DB.pagamentos||[]).forEach(function(payment){
@@ -545,6 +562,7 @@ function defaultDB(){ return {
 
 function allEss(){ var a=[]; ['contingencias','kit','semana','levar','gorjetas'].forEach(function(g){ (DB.essenciais[g]||[]).forEach(function(x){a.push(x);}); }); return a; }
 function countTasks(){ var t=0,dn=0; DB.cronograma.forEach(function(f){ f.tarefas.forEach(function(x){t++;if(x.done)dn++;}); }); allEss().forEach(function(x){t++;if(x.done)dn++;}); return {t:t,dn:dn}; }
+function taskPriority(task){return task.prioridade==='Crítica'?0:task.prioridade==='Alta'?1:task.prioridade==='Normal'?2:3;}
 function confirmados(){ var n=0; DB.convidados.forEach(function(g){ if(g.conf==='Confirmado') n+=guestCounts(g).total; }); return n; }
 function days(){ return Math.max(0,Math.ceil((weddingDate()-new Date())/86400000)); }
 function initials(){ var a=(DB.noiva||'').trim(), b=(DB.noivo||'').trim(); var x=a?a[0].toUpperCase():'', y=b?b[0].toUpperCase():''; return (x&&y)?(x+'&'+y):(x||y||'♡'); }
@@ -572,10 +590,12 @@ function renderInicio(){
   ));
   var ct=countTasks(), perc=ct.t?Math.round(ct.dn/ct.t*100):0;
   var next=[],taskOrder=0; DB.cronograma.forEach(function(f){ f.tarefas.forEach(function(x){ if(!x.done) next.push({x:x,fase:f.fase,ordem:taskOrder}); taskOrder++; }); });
-  next.sort(function(a,b){var ad=a.x.prazo?new Date(a.x.prazo+'T12:00:00').getTime():Infinity,bd=b.x.prazo?new Date(b.x.prazo+'T12:00:00').getTime():Infinity;return ad-bd||a.ordem-b.ordem;}); next=next.slice(0,6);
+  next.sort(function(a,b){var ad=a.x.prazo?new Date(a.x.prazo+'T12:00:00').getTime():Infinity,bd=b.x.prazo?new Date(b.x.prazo+'T12:00:00').getTime():Infinity;return ad-bd||taskPriority(a.x)-taskPriority(b.x)||a.ordem-b.ordem;}); next=next.slice(0,6);
   var np=h('div',{class:'card','data-testid':'next-steps'}, h('h2',{},'👉 Próximos passos'),
     h('div',{class:'prog'}, h('i',{style:'width:'+perc+'%'})),
     h('div',{class:'mini'}, perc+'% concluído · '+ct.dn+' de '+ct.t+' tarefas'));
+  var pendingTimeline=DB.cronograma.reduce(function(list,phase){return list.concat((phase.tarefas||[]).filter(function(task){return !task.done;}));},[]),criticalCount=pendingTimeline.filter(function(task){return task.prioridade==='Crítica';}).length,unassignedCritical=pendingTimeline.filter(function(task){return task.prioridade==='Crítica'&&!(task.resp||'').trim();}).length;
+  if(criticalCount)np.appendChild(h('p',{class:'hint'},criticalCount+' tarefa'+(criticalCount===1?'':'s')+' crítica'+(criticalCount===1?'':'s')+' pendente'+(criticalCount===1?'':'s')+' · '+unassignedCritical+' sem responsável'));
   if(next.length){ next.forEach(function(it){
     var row=h('div',{class:'ck'});
     row.appendChild(cb(it.x,'done',function(){ renderInicio(); }));
@@ -627,6 +647,10 @@ function renderInicio(){
   var chosenSuppliers=(DB.categorias||[]).filter(function(cat){return !cat.naoTera&&cat.opcaoEscolhida!==undefined&&cat.opcaoEscolhida!==null;}).length;
   var supplierTotal=(DB.categorias||[]).filter(function(cat){return !cat.naoTera;}).length, supplierPercent=supplierTotal?Math.round(chosenSuppliers/supplierTotal*100):0;
   el.appendChild(h('div',{class:'card','data-testid':'supplier-progress'},h('h2',{},'🤝 Fornecedores'),h('div',{class:'mini'},chosenSuppliers+' de '+supplierTotal+' escolhidos · '+supplierPercent+'%'),h('div',{class:'prog'},h('i',{style:'width:'+supplierPercent+'%'})),h('p',{class:'hint'},'Use “Escolher esta opção” na aba Fornecedores para enviar o contratado aos Pagamentos.')));
+  var activeSuppliers=(DB.categorias||[]).filter(function(cat){return cat.naoTera!=='Não terá';}),readinessList=activeSuppliers.map(function(cat){return {cat:cat,result:supplierReadiness(cat)};}),contractedSuppliers=readinessList.filter(function(item){return item.result.stage==='Contratado'||item.result.stage==='Pronto';}).length,readySuppliers=readinessList.filter(function(item){return item.result.stage==='Pronto';}).length,averageReadiness=readinessList.length?Math.round(readinessList.reduce(function(sum,item){return sum+item.result.score;},0)/readinessList.length):0,chosenPending=readinessList.filter(function(item){return item.cat.opcaoEscolhida!==undefined&&item.result.pending.length;});
+  var readinessCard=h('div',{class:'card','data-testid':'supplier-readiness'},h('h2',{},'✅ Prontidão dos fornecedores'),h('div',{class:'mini'},chosenSuppliers+' escolhido'+(chosenSuppliers===1?'':'s')+' · '+contractedSuppliers+' contratado'+(contractedSuppliers===1?'':'s')+' · '+readySuppliers+' pronto'+(readySuppliers===1?'':'s')),h('div',{class:'prog'},h('i',{style:'width:'+averageReadiness+'%'})),h('p',{class:'hint'},averageReadiness+'% de prontidão média'));
+  chosenPending.slice(0,5).forEach(function(item){readinessCard.appendChild(h('p',{class:'hint'},'• '+item.cat.nome+': '+item.result.pending[0]));});
+  el.appendChild(readinessCard);
   el.appendChild(h('div',{class:'card'}, h('h2',{},'💍 Informações principais'),
     h('p',{class:'hint'},'Convidados previstos: ',h('b',{'data-testid':'home-guests-planned'},DB.convidadosPrevistos||'0')),
     h('div',{class:'grid2'}, field('Noiva',tf(DB,'noiva','Nome da noiva')), field('Noivo',tf(DB,'noivo','Nome do noivo'))),
@@ -664,7 +688,9 @@ function taskRow(tk){
   row.appendChild(cb(tk,'done',function(){ row.className='ck'+(tk.done?' done':''); }));
   var m1=h('input',{class:'cn',type:'date',placeholder:'Prazo',style:'max-width:46%;display:inline-block',oninput:function(){tk.prazo=m1.value;saveD();}}); m1.value=tk.prazo||'';
   var m2=h('input',{class:'cn',placeholder:'Responsável',style:'max-width:46%;display:inline-block;margin-left:6px',oninput:function(){tk.resp=m2.value;saveD();}}); m2.value=tk.resp||'';
-  row.appendChild(h('div',{class:'cx'}, h('div',{class:'ct'},tk.t), h('div',{},m1,m2)));
+  var priority=sel(tk,'prioridade',['','Crítica','Alta','Normal','Opcional']);priority.setAttribute('aria-label','Prioridade');priority.style.maxWidth='46%';priority.style.display='inline-block';
+  var dependency=h('input',{class:'cn',placeholder:'Depende de...',style:'max-width:46%;display:inline-block;margin-left:6px',oninput:function(){tk.dependencia=dependency.value;saveD();}});dependency.value=tk.dependencia||'';
+  row.appendChild(h('div',{class:'cx'}, h('div',{class:'ct'},tk.t), h('div',{},m1,m2),h('div',{style:'margin-top:6px'},priority,dependency)));
   return row;
 }
 
@@ -677,7 +703,7 @@ function renderFornecedores(){
     body.appendChild(h('h3',{},'Opções de fornecedores'));
     var ow=h('div',{}); cat.opcoes.forEach(function(o,i){ ow.appendChild(optBlock(cat,o,i)); }); body.appendChild(ow);
     body.appendChild(h('button',{class:'btn s mini addrow',onclick:function(){ cat.opcoes.push(opt()); save(); ow.appendChild(optBlock(cat,cat.opcoes[cat.opcoes.length-1],cat.opcoes.length-1)); }},'+ opção'));
-    var displayStatus=cat.naoTera==='Não terá'?'Não terá':cat.status;
+    var displayStatus=cat.naoTera==='Não terá'?'Não terá':supplierReadiness(cat).stage;
     var chip=h('span',{class:'chip '+statusClass(displayStatus)}, displayStatus||'a definir');
     body.appendChild(h('h3',{},'Decisão'));
     body.appendChild(h('div',{class:'grid2'},
@@ -685,6 +711,9 @@ function renderFornecedores(){
       field('Categoria', sel(cat,'naoTera',['','Não terá'],function(){save();renderFornecedores();}))
     ));
     body.appendChild(field('Observações', ta(cat,'obs','Anotações, condições, o que falta...')));
+    var operation=h('input',{type:'checkbox','aria-label':'Operação do dia confirmada',onchange:function(){cat.operacaoConfirmada=operation.checked;save();renderFornecedores();}});operation.checked=!!cat.operacaoConfirmada;
+    body.appendChild(h('label',{class:'ck'},operation,h('span',{},'Operação do dia confirmada')));
+    body.appendChild(h('p',{class:'hint'},'Marque depois de alinhar endereço, horário, responsável, montagem e quantidade final.'));
     if(cat.pref){ var pf=h('div',{class:'pref'},'⭐ '+cat.pref); body.insertBefore(pf, body.firstChild); }
     var chev=h('span',{class:'chev'+(cat.open?' up':'')},'▸');
     var head=h('button',{class:'acc-h',onclick:function(){ var op=body.classList.toggle('open'); cat.open=op; save(); chev.className='chev'+(op?' up':''); }},
