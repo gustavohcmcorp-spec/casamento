@@ -682,14 +682,19 @@ function optBlock(cat,o,i){
   return proposal;
 }
 function chooseSupplierOption(cat,o,index){
-  var label=cat.nome.replace(/^\d+\.\s*/,'').replace(/\s*\(.*/,''), key=label.toLowerCase().split(' ')[0], link='categoria:'+cat.nome;
+  var label=cat.nome.replace(/^\d+[A-Z]?\.\s*/,'').replace(/\s*\(.*/,''), key=label.toLowerCase().split(' ')[0], link='categoria:'+cat.nome;
   if(o.tipoCobranca==='pacote'&&(!selectedPackage(o)||!packageTotal(o))){toast('Selecione um pacote com valor antes de enviar para Pagamentos.');return;}
-  var p=DB.pagamentos.find(function(item){return item.vinculoFornecedor===link||(item.forn||'').toLowerCase().indexOf(key)>=0;});
+  var p=DB.pagamentos.find(function(item){return item.vinculoFornecedor===link||(o.pagamentoId&&item.id===o.pagamentoId);});
+  if(!p){
+    var fallback={'16A. Beleza da noiva':'Beleza','17A. Traje da noiva':'Traje da noiva','17B. Traje do noivo':'Traje do noivo'}[cat.nome];
+    if(fallback)p=DB.pagamentos.find(function(item){return !item.vinculoFornecedor&&(item.forn||'').trim().toLowerCase()===fallback.toLowerCase();});
+    else if(cat.nome!=='16B. Beleza do noivo')p=DB.pagamentos.find(function(item){return !item.vinculoFornecedor&&(item.forn||'').toLowerCase().indexOf(key)>=0;});
+  }
   if(!p){p=ensurePayment({forn:label,total:''});DB.pagamentos.push(p);} else Object.assign(p,ensurePayment(p));
   p.forn=o.nome||label; p.total=o.valor||p.total; p.tipoCobranca=o.tipoCobranca||'fechado'; p.valorUnitario=o.valorUnitario||''; p.valorAdulto=o.valorAdulto||''; p.valorAte5=o.valorAte5||''; p.valor6a10=o.valor6a10||''; p.valor11mais=o.valor11mais||''; p.pacotes=JSON.parse(JSON.stringify(o.pacotes||[])); p.pacoteEscolhido=o.pacoteEscolhido||''; p.pacoteDescricao=packageDescription(o); p.vinculoFornecedor=link; o.pagamentoId=p.id; o.pagamentoVinculo=link; o.open=true;
   cat.opcaoEscolhida=index; cat.decisao=p.forn; cat.status='Reservado'; cat.open=true; save(); renderFornecedores(); toast('Opção enviada para Pagamentos.');
 }
-function unchooseSupplierOption(cat){ var option=cat.opcoes[cat.opcaoEscolhida], link=(option&&option.pagamentoVinculo)||('categoria:'+cat.nome), names=[option&&option.nome,cat.decisao].filter(Boolean).map(function(name){return name.trim().toLowerCase();}); DB.pagamentos=DB.pagamentos.filter(function(payment){var paymentName=(payment.forn||'').trim().toLowerCase();return payment.id!==((option&&option.pagamentoId)||'')&&payment.vinculoFornecedor!==link&&names.indexOf(paymentName)<0;}); if(option){delete option.pagamentoId;delete option.pagamentoVinculo;} delete cat.opcaoEscolhida; delete cat.decisao; if(cat.status==='Reservado')cat.status='Orçamento recebido'; cat.open=true; save();renderFornecedores();toast('Escolha e pagamento vinculado removidos.'); }
+function unchooseSupplierOption(cat){ var option=cat.opcoes[cat.opcaoEscolhida], paymentId=option&&option.pagamentoId, stableLink=option&&option.pagamentoVinculo, categoryLink='categoria:'+cat.nome, names=[option&&option.nome,cat.decisao].filter(Boolean).map(function(name){return name.trim().toLowerCase();}); DB.pagamentos=DB.pagamentos.filter(function(payment){var paymentName=(payment.forn||'').trim().toLowerCase();if(paymentId&&payment.id===paymentId)return false;if(payment.vinculoFornecedor&&(payment.vinculoFornecedor===stableLink||payment.vinculoFornecedor===categoryLink))return false;if(!paymentId&&!stableLink&&!payment.vinculoFornecedor&&names.indexOf(paymentName)>=0)return false;return true;}); if(option){delete option.pagamentoId;delete option.pagamentoVinculo;} delete cat.opcaoEscolhida; delete cat.decisao; if(cat.status==='Reservado')cat.status='Orçamento recebido'; cat.open=true; save();renderFornecedores();toast('Escolha e pagamento vinculado removidos.'); }
 function downloadVisitEvent(o){
   if(!o.visitaData||!o.visitaHora){toast('Informe data e horário da visita.');return;}
   var start=o.visitaData.replace(/-/g,'')+'T'+o.visitaHora.replace(':','')+'00';

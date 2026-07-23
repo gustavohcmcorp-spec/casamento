@@ -167,3 +167,72 @@ test('mostra a pendência mais urgente com prazo sugerido', async ({ page }) => 
   await expect(page.getByTestId('next-steps')).toContainText('Reservar cabelo e barba do noivo');
   await expect(page.getByTestId('next-steps')).toContainText('31/03/2027');
 });
+
+test('calcula progresso com 24 categorias e exclusão individual', async ({ page }) => {
+  await page.goto('/index.html?test=1&authenticated=1');
+
+  await expect(page.getByTestId('supplier-progress')).toContainText('0 de 24 escolhidos · 0%');
+
+  await page.evaluate(() => {
+    DB.categorias.find(category => category.nome === '16B. Beleza do noivo').naoTera = 'Não terá';
+    renderInicio();
+  });
+
+  await expect(page.getByTestId('supplier-progress')).toContainText('0 de 23 escolhidos · 0%');
+});
+
+test('mantém pagamentos da noiva e do noivo independentes', async ({ page }) => {
+  await page.goto('/index.html?test=1&authenticated=1');
+
+  const result = await page.evaluate(() => {
+    DB.pagamentos = [ensurePayment({ forn: 'Beleza', total: '' })];
+    const bride = DB.categorias.find(category => category.nome === '16A. Beleza da noiva');
+    const groom = DB.categorias.find(category => category.nome === '16B. Beleza do noivo');
+    bride.opcoes[0].nome = 'Salão da noiva';
+    groom.opcoes[0].nome = 'Barbearia do noivo';
+
+    chooseSupplierOption(bride, bride.opcoes[0], 0);
+    const countAfterBride = DB.pagamentos.length;
+    chooseSupplierOption(groom, groom.opcoes[0], 0);
+    const before = DB.pagamentos.map(payment => ({
+      forn: payment.forn,
+      vinculo: payment.vinculoFornecedor
+    }));
+    unchooseSupplierOption(groom);
+
+    return {
+      countAfterBride,
+      before,
+      after: DB.pagamentos.map(payment => ({
+        forn: payment.forn,
+        vinculo: payment.vinculoFornecedor
+      }))
+    };
+  });
+
+  expect(result.countAfterBride).toBe(1);
+  expect(result.before).toEqual([
+    { forn: 'Salão da noiva', vinculo: 'categoria:16A. Beleza da noiva' },
+    { forn: 'Barbearia do noivo', vinculo: 'categoria:16B. Beleza do noivo' }
+  ]);
+  expect(result.after).toEqual([
+    { forn: 'Salão da noiva', vinculo: 'categoria:16A. Beleza da noiva' }
+  ]);
+});
+
+test('escolher fornecedor não conclui a pendência manual', async ({ page }) => {
+  await page.goto('/index.html?test=1&authenticated=1');
+
+  const result = await page.evaluate(() => {
+    const category = DB.categorias.find(item => item.nome === '16B. Beleza do noivo');
+    const task = DB.cronograma
+      .flatMap(phase => phase.tarefas)
+      .find(item => item.t === 'Reservar cabelo e barba do noivo');
+    category.opcoes[0].nome = 'Barbearia escolhida';
+    task.done = false;
+    chooseSupplierOption(category, category.opcoes[0], 0);
+    return { chosen: category.opcaoEscolhida, taskDone: task.done };
+  });
+
+  expect(result).toEqual({ chosen: 0, taskDone: false });
+});
